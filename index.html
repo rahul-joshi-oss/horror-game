@@ -1,0 +1,2664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DESCENT</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:#000;font-family:'Courier New',monospace}
+canvas{display:block}
+
+#blocker{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);
+  display:flex;align-items:center;justify-content:center;z-index:100;flex-direction:column;cursor:pointer}
+#title{color:#cc0000;font-size:52px;letter-spacing:18px;text-shadow:0 0 30px #cc0000,0 0 60px #660000;
+  margin-bottom:30px;animation:pulse 3s ease-in-out infinite}
+#subtitle{color:#444;font-size:12px;letter-spacing:4px;margin-bottom:40px}
+#instructions{color:#666;font-size:13px;text-align:center;line-height:2.2}
+#instructions span{color:#999}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+
+#hud{position:fixed;bottom:20px;left:20px;color:#0a0;font-size:13px;z-index:10;text-shadow:0 0 6px #0a0;
+  pointer-events:none}
+#hud .label{color:#060;font-size:10px}
+#floor-ind{position:fixed;top:20px;right:20px;color:#0a0;font-size:16px;z-index:10;
+  text-shadow:0 0 8px #0a0;pointer-events:none}
+#stamina-bar{position:fixed;bottom:20px;right:20px;width:120px;height:4px;background:#111;z-index:10;
+  border:1px solid #333;pointer-events:none}
+#stamina-fill{width:100%;height:100%;background:#0a0;transition:width 0.1s}
+#crosshair{position:fixed;top:50%;left:50%;width:2px;height:2px;background:rgba(255,255,255,0.4);
+  transform:translate(-50%,-50%);z-index:10;border-radius:50%;pointer-events:none;
+  box-shadow:0 0 4px rgba(255,255,255,0.2)}
+#interact-prompt{position:fixed;top:55%;left:50%;transform:translateX(-50%);color:#aaa;font-size:14px;
+  z-index:10;display:none;text-align:center;pointer-events:none;text-shadow:0 0 8px rgba(255,255,255,0.3)}
+#vignette{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4;
+  background:radial-gradient(ellipse at center,transparent 60%,rgba(0,0,0,0.8) 100%)}
+#danger-overlay{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;
+  background:radial-gradient(ellipse at center,transparent 40%,rgba(80,0,0,0) 100%);
+  transition:opacity 0.3s;opacity:0}
+
+#terminal-ui{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);
+  display:none;align-items:center;justify-content:center;z-index:150;flex-direction:column}
+#terminal-screen{width:500px;max-width:90vw;background:#000;border:2px solid #0a0;padding:30px;
+  box-shadow:0 0 40px rgba(0,170,0,0.3),inset 0 0 40px rgba(0,170,0,0.05);position:relative;overflow:hidden}
+#terminal-screen::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,170,0,0.03) 2px,
+  rgba(0,170,0,0.03) 4px);pointer-events:none;z-index:1}
+#terminal-text{color:#0a0;font-size:13px;line-height:1.8;white-space:pre-wrap;position:relative;z-index:2;
+  min-height:200px}
+#terminal-text .cursor{animation:blink 0.6s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+#game-over{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(100,0,0,0.9);
+  display:none;align-items:center;justify-content:center;z-index:200;flex-direction:column;cursor:pointer}
+#game-over h1{color:#fff;font-size:60px;letter-spacing:8px;animation:flicker 0.08s infinite}
+#game-over p{color:#999;font-size:14px;margin-top:20px}
+#victory{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);
+  display:none;align-items:center;justify-content:center;z-index:200;flex-direction:column;cursor:pointer}
+#victory h1{color:#0a0;font-size:48px;letter-spacing:6px;text-shadow:0 0 30px #0a0}
+#victory p{color:#666;font-size:14px;margin-top:20px}
+@keyframes flicker{0%,100%{opacity:1}50%{opacity:0.3}}
+
+#minimap-wrap{position:fixed;top:15px;left:15px;z-index:10;pointer-events:none}
+#minimap{border:1px solid #333;background:#000;display:block}
+#sound-meter{position:fixed;bottom:50px;right:20px;width:120px;height:4px;background:#111;z-index:10;
+  border:1px solid #333;pointer-events:none}
+#sound-fill{width:0%;height:100%;background:#0a0;transition:width 0.15s}
+#sound-label{position:fixed;bottom:57px;right:20px;color:#060;font-size:10px;z-index:10;
+  pointer-events:none;font-family:'Courier New',monospace}
+#crouch-ind{position:fixed;bottom:55px;left:20px;color:#0a0;font-size:11px;z-index:10;
+  pointer-events:none;font-family:'Courier New',monospace;display:none;text-shadow:0 0 6px #0a0}
+#hidden-ind{position:fixed;bottom:70px;left:20px;color:#08f;font-size:11px;z-index:10;
+  pointer-events:none;font-family:'Courier New',monospace;display:none;text-shadow:0 0 6px #08f}
+#cutscene-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;
+  display:none;z-index:180;align-items:center;justify-content:center;flex-direction:column}
+#cutscene-text{color:#c00;font-size:40px;letter-spacing:8px;font-family:'Courier New',monospace;
+  text-shadow:0 0 30px #c00;text-align:center;line-height:2}
+#cutscene-sub{color:#555;font-size:13px;letter-spacing:4px;font-family:'Courier New',monospace;
+  margin-top:20px;text-align:center}
+
+#vent-overlay{position:fixed;top:0;left:0;width:100%;height:100%;z-index:7;pointer-events:none;display:none}
+#vent-bars{position:absolute;top:0;left:0;width:100%;height:100%;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,0.5) 0px,rgba(0,0,0,0.5) 3px,
+  rgba(20,25,30,0.15) 3px,rgba(20,25,30,0.15) 10px);opacity:0.35}
+#vent-dark{position:absolute;top:0;left:0;width:100%;height:100%;
+  background:radial-gradient(ellipse at center,rgba(0,0,0,0.15) 30%,rgba(0,0,0,0.7) 80%)}
+#vent-progress-wrap{position:absolute;bottom:30%;left:50%;transform:translateX(-50%);
+  width:200px;text-align:center}
+#vent-progress-label{color:#0aa;font-size:11px;letter-spacing:3px;font-family:'Courier New',monospace;
+  margin-bottom:6px;text-shadow:0 0 6px #0aa}
+#vent-progress-bar{width:100%;height:4px;background:#111;border:1px solid #0aa}
+#vent-progress-fill{width:0%;height:100%;background:#0aa;transition:width 0.05s}
+
+#difficulty-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);
+  display:none;align-items:center;justify-content:center;z-index:110;flex-direction:column}
+#difficulty-screen h2{color:#cc0000;font-size:28px;letter-spacing:10px;margin-bottom:40px;
+  text-shadow:0 0 20px #cc0000;font-family:'Courier New',monospace}
+.diff-btn{background:none;border:2px solid #333;color:#999;font-size:16px;padding:14px 50px;
+  margin:8px;cursor:pointer;font-family:'Courier New',monospace;letter-spacing:4px;
+  transition:all 0.2s;min-width:260px;text-align:center}
+.diff-btn:hover{border-color:#0a0;color:#0a0;text-shadow:0 0 10px #0a0;box-shadow:0 0 15px rgba(0,170,0,0.2)}
+.diff-desc{color:#444;font-size:10px;letter-spacing:2px;margin-bottom:12px;font-family:'Courier New',monospace}
+</style>
+</head>
+<body>
+
+<div id="blocker">
+  <div id="title">DESCENT</div>
+  <div id="subtitle">A HORROR EXPERIENCE</div>
+  <div id="instructions">
+    <span>WASD</span> - Move &nbsp;&nbsp; <span>MOUSE</span> - Look<br>
+    <span>F</span> - Flashlight &nbsp;&nbsp; <span>E</span> - Interact &nbsp;&nbsp; <span>SHIFT</span> - Sprint &nbsp;&nbsp; <span>C</span> - Crouch<br><br>
+    Find terminals. Collect keycards. Escape the building.<br>
+    <span style="color:#600">Something else is in here with you.</span><br><br>
+    Click to begin
+  </div>
+</div>
+
+<div id="crosshair"></div>
+<div id="vignette"></div>
+<div id="danger-overlay"></div>
+
+<div id="hud">
+  <div class="label">KEYCARDS</div>
+  <div id="keycard-display">---</div>
+</div>
+<div id="floor-ind">FLOOR 1</div>
+<div id="stamina-bar"><div id="stamina-fill"></div></div>
+<div id="interact-prompt"></div>
+
+<div id="minimap-wrap"><canvas id="minimap" width="168" height="168"></canvas></div>
+<div id="sound-label">NOISE</div>
+<div id="sound-meter"><div id="sound-fill"></div></div>
+<div id="crouch-ind">[ CROUCHING ]</div>
+<div id="hidden-ind">[ HIDDEN ]</div>
+<div id="vent-overlay">
+  <div id="vent-bars"></div>
+  <div id="vent-dark"></div>
+  <div id="vent-progress-wrap">
+    <div id="vent-progress-label">HOLD W TO CRAWL</div>
+    <div id="vent-progress-bar"><div id="vent-progress-fill"></div></div>
+  </div>
+</div>
+<div id="cutscene-overlay"><div id="cutscene-text"></div><div id="cutscene-sub"></div></div>
+
+<div id="terminal-ui"><div id="terminal-screen"><div id="terminal-text"></div></div></div>
+
+<div id="difficulty-screen">
+  <h2>SELECT DIFFICULTY</h2>
+  <button class="diff-btn" data-diff="easy">EASY</button>
+  <div class="diff-desc">More hiding spots &bull; Slower entity &bull; Longer memory loss</div>
+  <button class="diff-btn" data-diff="normal">NORMAL</button>
+  <div class="diff-desc">Standard experience &bull; Balanced challenge</div>
+  <button class="diff-btn" data-diff="hard">HARD</button>
+  <div class="diff-desc">Fewer hiding spots &bull; Faster entity &bull; Relentless pursuit</div>
+</div>
+
+<div id="game-over"><h1>YOU DIED</h1><p>Click to retry</p></div>
+<div id="victory"><h1>YOU ESCAPED</h1><p>Click to play again</p></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIGURATION
+// ═══════════════════════════════════════════════════════════
+const C = {
+    GRID: 21,
+    CELL: 4,
+    WALL_H: 3.8,
+    FLOORS: 5,
+    SPEED: 6,
+    SPRINT: 1.7,
+    SENS: 0.002,
+    EYE_H: 1.7,
+    P_RAD: 0.35,
+    INTERACT: 3.5,
+    FL_DIST: 45,
+    FL_ANGLE: Math.PI / 5,
+    E_PATROL: 1.2,
+    E_CHASE: 2.2,
+    E_SIGHT: 10,
+    E_KILL: 1.6,
+    E_MEMORY: 8,
+    STAMINA: 100,
+    STAM_DRAIN: 28,
+    STAM_REGEN: 18,
+    CROUCH_H: 0.9,
+    CROUCH_SPEED: 0.5,
+    NOISE_STILL: 0.02,
+    NOISE_WALK: 0.3,
+    NOISE_SPRINT: 0.75,
+    NOISE_CROUCH_MOVE: 0.1,
+    NOISE_CROUCH_STILL: 0.01,
+    E_HEAR_RANGE: 8,
+    TABLE_COUNT: 3,
+    VENT_COUNT: 4,
+    MINIMAP_CELL: 8,
+    MINIMAP_REVEAL: 4,
+};
+
+// Difficulty presets: adjust entity speed, hiding spots, memory, chase speed
+const DIFFICULTY = {
+    easy: {
+        E_PATROL: 0.8, E_CHASE: 1.5, E_SIGHT: 7, E_MEMORY: 4, E_HEAR_RANGE: 5,
+        TABLE_COUNT: 5, VENT_COUNT: 6,
+        CHASE_ENTITY_BASE_SPEED: 1.8, CHASE_ENTITY_ACCEL: 0.05,
+        STAM_DRAIN: 20, STAM_REGEN: 25,
+    },
+    normal: {
+        E_PATROL: 1.2, E_CHASE: 2.2, E_SIGHT: 10, E_MEMORY: 6, E_HEAR_RANGE: 8,
+        TABLE_COUNT: 3, VENT_COUNT: 4,
+        CHASE_ENTITY_BASE_SPEED: 2.5, CHASE_ENTITY_ACCEL: 0.10,
+        STAM_DRAIN: 28, STAM_REGEN: 18,
+    },
+    hard: {
+        E_PATROL: 1.8, E_CHASE: 3.0, E_SIGHT: 14, E_MEMORY: 10, E_HEAR_RANGE: 12,
+        TABLE_COUNT: 1, VENT_COUNT: 3,
+        CHASE_ENTITY_BASE_SPEED: 3.2, CHASE_ENTITY_ACCEL: 0.15,
+        STAM_DRAIN: 35, STAM_REGEN: 14,
+    },
+};
+
+function applyDifficulty(diff) {
+    const d = DIFFICULTY[diff] || DIFFICULTY.normal;
+    C.E_PATROL = d.E_PATROL;
+    C.E_CHASE = d.E_CHASE;
+    C.E_SIGHT = d.E_SIGHT;
+    C.E_MEMORY = d.E_MEMORY;
+    C.E_HEAR_RANGE = d.E_HEAR_RANGE;
+    C.TABLE_COUNT = d.TABLE_COUNT;
+    C.VENT_COUNT = d.VENT_COUNT;
+    C.STAM_DRAIN = d.STAM_DRAIN;
+    C.STAM_REGEN = d.STAM_REGEN;
+    state.difficulty = diff;
+}
+
+const STAIR_A = { x: 3, z: 3 };
+const STAIR_B = { x: 17, z: 17 };
+const EXIT_POS = { x: 11, z: 19 };
+const SPAWN_POS = { x: 11, z: 17 };
+
+// ═══════════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════════
+const state = {
+    floor: 0,
+    keycards: new Set(),
+    hasExitKey: false,
+    flashlight: true,
+    sprinting: false,
+    stamina: C.STAMINA,
+    active: false,
+    dead: false,
+    won: false,
+    inTerminal: false,
+    crouching: false,
+    noiseLevel: 0,
+    hiding: false,
+    inVent: false,
+    chaseMode: false,
+    chasePhase: 'none',
+    chaseTimer: 0,
+    chaseGrid: null,
+    chaseCheckpoints: [],
+    chaseFloorCount: 5,
+    explored: [],
+    difficulty: 'normal',
+
+    eFloor: 2,
+    ePos: { x: 9, z: 9 },
+    eState: 'patrol',
+    eTarget: null,
+    ePath: [],
+    ePathIdx: 0,
+    eLostTimer: 0,
+    eFloorTimer: 0,
+    eStepTimer: 0,
+
+    yaw: 0,
+    pitch: 0,
+    footTimer: 0,
+};
+
+const keys = {};
+const floors = [];
+const floorGroups = [];
+let scene, camera, renderer, flashlight, flashTarget;
+let entityGroup, entityEyeL, entityEyeR, entityLight;
+let clock;
+let audio;
+let ambientDrone = null;
+
+// ═══════════════════════════════════════════════════════════
+// AUDIO SYSTEM
+// ═══════════════════════════════════════════════════════════
+class Audio {
+    constructor() {
+        this.ctx = null;
+        this.master = null;
+    }
+    init() {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0.6;
+        this.master.connect(this.ctx.destination);
+    }
+    ensure() {
+        if (!this.ctx) this.init();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+    }
+    tone(freq, dur, type = 'sine', vol = 0.1, delay = 0) {
+        this.ensure();
+        const t = this.ctx.currentTime + delay;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = type;
+        o.frequency.setValueAtTime(freq, t);
+        g.gain.setValueAtTime(vol, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        o.connect(g);
+        g.connect(this.master);
+        o.start(t);
+        o.stop(t + dur);
+    }
+    noise(dur, vol = 0.05) {
+        this.ensure();
+        const sr = this.ctx.sampleRate;
+        const buf = this.ctx.createBuffer(1, sr * dur, sr);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(vol, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+        src.connect(g);
+        g.connect(this.master);
+        src.start();
+    }
+    footstep() { this.tone(70 + Math.random() * 30, 0.08, 'sine', 0.04); }
+    heartbeat() {
+        this.tone(55, 0.12, 'sine', 0.25);
+        this.tone(45, 0.1, 'sine', 0.18, 0.14);
+    }
+    terminalBeep() { this.tone(900, 0.06, 'square', 0.04); }
+    keycardGet() {
+        this.tone(523, 0.12, 'sine', 0.08);
+        this.tone(659, 0.12, 'sine', 0.08, 0.12);
+        this.tone(784, 0.25, 'sine', 0.08, 0.24);
+    }
+    doorUnlock() {
+        this.tone(440, 0.08, 'square', 0.08);
+        this.tone(880, 0.15, 'square', 0.08, 0.08);
+    }
+    entitySpot() {
+        this.noise(0.3, 0.2);
+        this.tone(180, 0.4, 'sawtooth', 0.15);
+    }
+    jumpscare() {
+        this.noise(0.6, 0.5);
+        this.tone(80, 0.6, 'sawtooth', 0.35);
+        this.tone(120, 0.5, 'square', 0.2);
+    }
+    stairSound() {
+        for (let i = 0; i < 5; i++) this.tone(200 + i * 40, 0.08, 'sine', 0.03, i * 0.06);
+    }
+    startDrone() {
+        this.ensure();
+        if (ambientDrone) return;
+        const o1 = this.ctx.createOscillator();
+        const o2 = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        const f = this.ctx.createBiquadFilter();
+        o1.type = 'sawtooth'; o1.frequency.value = 38;
+        o2.type = 'sine'; o2.frequency.value = 55;
+        f.type = 'lowpass'; f.frequency.value = 80;
+        g.gain.value = 0.025;
+        o1.connect(f); o2.connect(f); f.connect(g); g.connect(this.master);
+        o1.start(); o2.start();
+        ambientDrone = { o1, o2, g, f };
+    }
+    alarm() {
+        this.ensure();
+        for (let i = 0; i < 4; i++) {
+            this.tone(220, 0.4, 'sawtooth', 0.2, i * 0.5);
+            this.tone(330, 0.4, 'sawtooth', 0.15, i * 0.5 + 0.25);
+        }
+    }
+    ventSound() {
+        this.noise(0.3, 0.1);
+        this.tone(300, 0.2, 'sine', 0.05);
+    }
+    chaseStinger() {
+        this.ensure();
+        this.noise(0.6, 0.4);
+        this.tone(55, 1.0, 'sawtooth', 0.3);
+        this.tone(82, 0.8, 'square', 0.2, 0.1);
+    }
+    escapeFanfare() {
+        this.tone(440, 0.2, 'sine', 0.1);
+        this.tone(554, 0.2, 'sine', 0.1, 0.2);
+        this.tone(659, 0.3, 'sine', 0.12, 0.4);
+    }
+    startChaseMusic() {
+        this.ensure();
+        if (this._chaseDrone) return;
+        // Intense low drone with pulsing
+        const o1 = this.ctx.createOscillator();
+        const o2 = this.ctx.createOscillator();
+        const o3 = this.ctx.createOscillator();
+        const lfo = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+        const g = this.ctx.createGain();
+        const f = this.ctx.createBiquadFilter();
+        const dist = this.ctx.createWaveShaper();
+
+        o1.type = 'sawtooth'; o1.frequency.value = 50;
+        o2.type = 'square'; o2.frequency.value = 75;
+        o3.type = 'sawtooth'; o3.frequency.value = 100;
+        lfo.type = 'sine'; lfo.frequency.value = 2.5;
+        lfoGain.gain.value = 15;
+        f.type = 'lowpass'; f.frequency.value = 200;
+
+        // Distortion curve for grittiness
+        const curve = new Float32Array(256);
+        for (let i = 0; i < 256; i++) {
+            const x = (i / 128) - 1;
+            curve[i] = (Math.PI + 4) * x / (Math.PI + 4 * Math.abs(x));
+        }
+        dist.curve = curve;
+
+        lfo.connect(lfoGain);
+        lfoGain.connect(o1.frequency);
+
+        g.gain.value = 0.06;
+        o1.connect(f); o2.connect(f); o3.connect(f);
+        f.connect(dist); dist.connect(g); g.connect(this.master);
+        o1.start(); o2.start(); o3.start(); lfo.start();
+
+        // Rhythmic percussion hits
+        this._chasePerc = setInterval(() => {
+            if (!this.ctx) return;
+            this.tone(45 + Math.random() * 20, 0.12, 'square', 0.12);
+            this.noise(0.08, 0.08);
+        }, 500);
+
+        // Higher stinger notes that shift
+        this._chaseStinger = setInterval(() => {
+            if (!this.ctx) return;
+            const notes = [110, 130, 147, 165, 82];
+            const n = notes[Math.floor(Math.random() * notes.length)];
+            this.tone(n, 0.4, 'sawtooth', 0.04);
+        }, 2000);
+
+        this._chaseDrone = { o1, o2, o3, lfo, lfoGain, g, f, dist };
+    }
+    stopChaseMusic() {
+        if (this._chaseDrone) {
+            const d = this._chaseDrone;
+            try { d.o1.stop(); d.o2.stop(); d.o3.stop(); d.lfo.stop(); } catch(e) {}
+            this._chaseDrone = null;
+        }
+        if (this._chasePerc) { clearInterval(this._chasePerc); this._chasePerc = null; }
+        if (this._chaseStinger) { clearInterval(this._chaseStinger); this._chaseStinger = null; }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// UTILITY
+// ═══════════════════════════════════════════════════════════
+function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+function gridToWorld(gx, gz) {
+    return { x: gx * C.CELL + C.CELL / 2, z: gz * C.CELL + C.CELL / 2 };
+}
+
+function worldToGrid(wx, wz) {
+    return { x: Math.floor(wx / C.CELL), z: Math.floor(wz / C.CELL) };
+}
+
+function dist2D(a, b) {
+    return Math.sqrt((a.x - b.x) ** 2 + (a.z - b.z) ** 2);
+}
+
+function getStairUp(fi) {
+    if (fi >= C.FLOORS - 1) return null;
+    return fi % 2 === 0 ? { ...STAIR_A } : { ...STAIR_B };
+}
+
+function getStairDown(fi) {
+    if (fi <= 0) return null;
+    return fi % 2 === 1 ? { ...STAIR_A } : { ...STAIR_B };
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAZE GENERATION
+// ═══════════════════════════════════════════════════════════
+function generateMaze() {
+    const s = C.GRID;
+    const g = [];
+    for (let z = 0; z < s; z++) {
+        g[z] = [];
+        for (let x = 0; x < s; x++) g[z][x] = 1;
+    }
+
+    function carve(x, z) {
+        g[z][x] = 0;
+        const dirs = shuffle([[0, -2], [0, 2], [-2, 0], [2, 0]]);
+        for (const [dx, dz] of dirs) {
+            const nx = x + dx, nz = z + dz;
+            if (nx > 0 && nx < s - 1 && nz > 0 && nz < s - 1 && g[nz][nx] === 1) {
+                g[z + dz / 2][x + dx / 2] = 0;
+                carve(nx, nz);
+            }
+        }
+    }
+    carve(1, 1);
+
+    // Open some extra passages to make it less maze-like
+    for (let i = 0; i < 15; i++) {
+        const x = 2 + Math.floor(Math.random() * (s - 4));
+        const z = 2 + Math.floor(Math.random() * (s - 4));
+        if (g[z][x] === 1) {
+            let openN = 0;
+            if (g[z - 1][x] === 0) openN++;
+            if (g[z + 1][x] === 0) openN++;
+            if (g[z][x - 1] === 0) openN++;
+            if (g[z][x + 1] === 0) openN++;
+            if (openN >= 2) g[z][x] = 0;
+        }
+    }
+
+    return g;
+}
+
+function carveRoom(grid, cx, cz, r) {
+    for (let dz = -r; dz <= r; dz++) {
+        for (let dx = -r; dx <= r; dx++) {
+            const x = cx + dx, z = cz + dz;
+            if (x > 0 && x < C.GRID - 1 && z > 0 && z < C.GRID - 1) {
+                grid[z][x] = 0;
+            }
+        }
+    }
+}
+
+function findDeadEnds(grid) {
+    const ends = [];
+    for (let z = 1; z < C.GRID - 1; z++) {
+        for (let x = 1; x < C.GRID - 1; x++) {
+            if (grid[z][x] === 0) {
+                let open = 0;
+                if (grid[z - 1][x] === 0) open++;
+                if (grid[z + 1][x] === 0) open++;
+                if (grid[z][x - 1] === 0) open++;
+                if (grid[z][x + 1] === 0) open++;
+                if (open === 1) ends.push({ x, z });
+            }
+        }
+    }
+    return ends;
+}
+
+// BFS pathfinding
+function findPath(grid, sx, sz, ex, ez) {
+    if (sx === ex && sz === ez) return [];
+    const q = [[sx, sz]];
+    const visited = new Set([`${sx},${sz}`]);
+    const parent = {};
+    while (q.length > 0) {
+        const [x, z] = q.shift();
+        for (const [dx, dz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+            const nx = x + dx, nz = z + dz;
+            const k = `${nx},${nz}`;
+            if (nx >= 0 && nx < C.GRID && nz >= 0 && nz < C.GRID && grid[nz][nx] === 0 && !visited.has(k)) {
+                visited.add(k);
+                parent[k] = `${x},${z}`;
+                if (nx === ex && nz === ez) {
+                    const path = [];
+                    let c = k;
+                    while (c !== `${sx},${sz}`) {
+                        const [px, pz] = c.split(',').map(Number);
+                        path.unshift({ x: px, z: pz });
+                        c = parent[c];
+                    }
+                    return path;
+                }
+                q.push([nx, nz]);
+            }
+        }
+    }
+    return [];
+}
+
+// Line of sight check on grid
+function hasLineOfSight(grid, x1, z1, x2, z2) {
+    const dx = x2 - x1, dz = z2 - z1;
+    const steps = Math.max(Math.abs(dx), Math.abs(dz)) * 2;
+    if (steps === 0) return true;
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const cx = Math.round(x1 + dx * t);
+        const cz = Math.round(z1 + dz * t);
+        if (cx >= 0 && cx < C.GRID && cz >= 0 && cz < C.GRID && grid[cz][cx] === 1) return false;
+    }
+    return true;
+}
+
+// ═══════════════════════════════════════════════════════════
+// FLOOR DATA GENERATION
+// ═══════════════════════════════════════════════════════════
+// Generate tunnel grid connecting all vent positions via MST corridors
+function generateTunnelGrid(vents) {
+    const s = C.GRID;
+    const g = [];
+    for (let z = 0; z < s; z++) { g[z] = []; for (let x = 0; x < s; x++) g[z][x] = 1; }
+    if (vents.length < 2) {
+        for (const v of vents) g[v.z][v.x] = 0;
+        return g;
+    }
+    // Minimum spanning tree: connect nearest unconnected vent each step
+    const connected = [vents[0]];
+    const remaining = [...vents.slice(1)];
+    while (remaining.length > 0) {
+        let bestD = Infinity, bestCI = 0, bestRI = 0;
+        for (let ci = 0; ci < connected.length; ci++) {
+            for (let ri = 0; ri < remaining.length; ri++) {
+                const d = Math.abs(connected[ci].x - remaining[ri].x) + Math.abs(connected[ci].z - remaining[ri].z);
+                if (d < bestD) { bestD = d; bestCI = ci; bestRI = ri; }
+            }
+        }
+        const from = connected[bestCI], to = remaining[bestRI];
+        // Carve L-shaped corridor: horizontal then vertical
+        const dx = to.x >= from.x ? 1 : -1;
+        for (let x = from.x; ; x += dx) {
+            if (x >= 1 && x < s - 1) g[from.z][x] = 0;
+            if (x === to.x) break;
+        }
+        const dz = to.z >= from.z ? 1 : -1;
+        for (let z = from.z; ; z += dz) {
+            if (z >= 1 && z < s - 1) g[z][to.x] = 0;
+            if (z === to.z) break;
+        }
+        connected.push(remaining[bestRI]);
+        remaining.splice(bestRI, 1);
+    }
+    // Open vent positions and immediate neighbors for room at exits
+    for (const v of vents) {
+        g[v.z][v.x] = 0;
+        for (const [ddx, ddz] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+            const nx = v.x + ddx, nz = v.z + ddz;
+            if (nx > 0 && nx < s - 1 && nz > 0 && nz < s - 1) g[nz][nx] = 0;
+        }
+    }
+    // Add a few extra branches for exploration variety
+    for (let i = 0; i < 4; i++) {
+        const v = vents[Math.floor(Math.random() * vents.length)];
+        const len = 2 + Math.floor(Math.random() * 4);
+        const dir = [[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random() * 4)];
+        for (let j = 1; j <= len; j++) {
+            const nx = v.x + dir[0] * j, nz = v.z + dir[1] * j;
+            if (nx > 0 && nx < s - 1 && nz > 0 && nz < s - 1) g[nz][nx] = 0;
+            else break;
+        }
+    }
+    return g;
+}
+
+function generateFloorData(fi) {
+    const grid = generateMaze();
+
+    const su = getStairUp(fi);
+    const sd = getStairDown(fi);
+    if (su) carveRoom(grid, su.x, su.z, 1);
+    if (sd) carveRoom(grid, sd.x, sd.z, 1);
+    if (fi === 0) {
+        carveRoom(grid, EXIT_POS.x, EXIT_POS.z, 1);
+        carveRoom(grid, SPAWN_POS.x, SPAWN_POS.z, 1);
+        // Ensure path from spawn to exit
+        for (let z = Math.min(SPAWN_POS.z, EXIT_POS.z); z <= Math.max(SPAWN_POS.z, EXIT_POS.z); z++) {
+            grid[z][SPAWN_POS.x] = 0;
+        }
+    }
+
+    // Place terminal at a dead end far from stairs
+    const deadEnds = findDeadEnds(grid);
+    let terminal = null;
+    if (deadEnds.length > 0) {
+        // Sort by distance from stairs, pick furthest
+        deadEnds.sort((a, b) => {
+            const da = (su ? dist2D(a, su) : 0) + (sd ? dist2D(a, sd) : 0);
+            const db = (su ? dist2D(b, su) : 0) + (sd ? dist2D(b, sd) : 0);
+            return db - da;
+        });
+        terminal = deadEnds[0];
+    } else {
+        // Fallback: pick random open cell
+        const open = [];
+        for (let z = 2; z < C.GRID - 2; z++)
+            for (let x = 2; x < C.GRID - 2; x++)
+                if (grid[z][x] === 0) open.push({ x, z });
+        terminal = open[Math.floor(Math.random() * open.length)];
+    }
+
+    // Add some flickering light positions
+    const lights = [];
+    const open = [];
+    for (let z = 2; z < C.GRID - 2; z++)
+        for (let x = 2; x < C.GRID - 2; x++)
+            if (grid[z][x] === 0) open.push({ x, z });
+    shuffle(open);
+    for (let i = 0; i < Math.min(6, open.length); i++) lights.push(open[i]);
+
+    // Place tables (hiding spots)
+    const tables = [];
+    const remaining = open.filter(p =>
+        !(terminal && p.x === terminal.x && p.z === terminal.z) &&
+        !(su && p.x === su.x && p.z === su.z) &&
+        !(sd && p.x === sd.x && p.z === sd.z)
+    );
+    shuffle(remaining);
+    for (let i = 0; i < Math.min(C.TABLE_COUNT, remaining.length); i++) {
+        tables.push(remaining[i]);
+    }
+
+    // Place individual vents (all connected via tunnel network)
+    const vents = [];
+    const ventCandidates = remaining.slice(C.TABLE_COUNT);
+    shuffle(ventCandidates);
+    for (let i = 0; i < C.VENT_COUNT && ventCandidates.length > 0; i++) {
+        vents.push(ventCandidates.pop());
+    }
+
+    // Generate tunnel grid connecting all vents
+    const tunnelGrid = vents.length >= 2 ? generateTunnelGrid(vents) : null;
+
+    return {
+        grid,
+        terminal,
+        stairUp: su,
+        stairDown: sd,
+        terminalAccessed: false,
+        stairUpLocked: true,
+        lights,
+        tables,
+        vents,
+        tunnelGrid,
+    };
+}
+
+// ═══════════════════════════════════════════════════════════
+// THREE.JS SETUP
+// ═══════════════════════════════════════════════════════════
+function setupScene() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x010101);
+    scene.fog = new THREE.FogExp2(0x010101, 0.035);
+
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, C.EYE_H, 0);
+    camera.rotation.order = 'YXZ';
+
+    renderer = new THREE.WebGLRenderer({ antialias: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.8;
+    document.body.appendChild(renderer.domElement);
+
+    // Very dim ambient
+    const ambient = new THREE.AmbientLight(0x050508, 0.15);
+    scene.add(ambient);
+
+    // Flashlight
+    flashTarget = new THREE.Object3D();
+    scene.add(flashTarget);
+    flashlight = new THREE.SpotLight(0xfff8ee, 3.5, C.FL_DIST, C.FL_ANGLE, 0.3, 1.2);
+    flashlight.castShadow = true;
+    flashlight.shadow.mapSize.set(512, 512);
+    flashlight.shadow.camera.near = 0.5;
+    flashlight.shadow.camera.far = C.FL_DIST;
+    flashlight.target = flashTarget;
+    scene.add(flashlight);
+
+    clock = new THREE.Clock();
+}
+
+// ═══════════════════════════════════════════════════════════
+// BUILD FLOOR GEOMETRY
+// ═══════════════════════════════════════════════════════════
+function buildFloor(fi) {
+    const fd = floors[fi];
+    const group = new THREE.Group();
+    group.name = `floor_${fi}`;
+
+    const wallGeo = new THREE.BoxGeometry(C.CELL, C.WALL_H, C.CELL);
+    const wallMat = new THREE.MeshPhongMaterial({
+        color: 0x1a1a1e,
+        specular: 0x111111,
+        shininess: 5,
+    });
+
+    // Count walls
+    let wallCount = 0;
+    for (let z = 0; z < C.GRID; z++)
+        for (let x = 0; x < C.GRID; x++)
+            if (fd.grid[z][x] === 1) wallCount++;
+
+    const walls = new THREE.InstancedMesh(wallGeo, wallMat, wallCount);
+    walls.castShadow = true;
+    walls.receiveShadow = true;
+    const mat4 = new THREE.Matrix4();
+    let idx = 0;
+    for (let z = 0; z < C.GRID; z++) {
+        for (let x = 0; x < C.GRID; x++) {
+            if (fd.grid[z][x] === 1) {
+                mat4.makeTranslation(x * C.CELL + C.CELL / 2, C.WALL_H / 2, z * C.CELL + C.CELL / 2);
+                walls.setMatrixAt(idx++, mat4);
+            }
+        }
+    }
+    walls.instanceMatrix.needsUpdate = true;
+    group.add(walls);
+
+    // Floor plane
+    const floorSize = C.GRID * C.CELL;
+    const floorGeo = new THREE.PlaneGeometry(floorSize, floorSize);
+    const floorMat = new THREE.MeshPhongMaterial({ color: 0x0e0e10, specular: 0x111111, shininess: 3 });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.position.set(floorSize / 2, 0, floorSize / 2);
+    floorMesh.receiveShadow = true;
+    group.add(floorMesh);
+
+    // Ceiling
+    const ceilMat = new THREE.MeshPhongMaterial({ color: 0x080808 });
+    const ceil = new THREE.Mesh(floorGeo.clone(), ceilMat);
+    ceil.rotation.x = Math.PI / 2;
+    ceil.position.set(floorSize / 2, C.WALL_H, floorSize / 2);
+    group.add(ceil);
+
+    // Terminal
+    if (fd.terminal) {
+        const tw = gridToWorld(fd.terminal.x, fd.terminal.z);
+        const tGroup = new THREE.Group();
+        tGroup.position.set(tw.x, 0, tw.z);
+        tGroup.userData = { type: 'terminal', floor: fi };
+
+        // Desk
+        const deskGeo = new THREE.BoxGeometry(1.2, 0.8, 0.6);
+        const deskMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
+        const desk = new THREE.Mesh(deskGeo, deskMat);
+        desk.position.y = 0.4;
+        desk.castShadow = true;
+        tGroup.add(desk);
+
+        // Monitor
+        const monGeo = new THREE.BoxGeometry(0.9, 0.6, 0.05);
+        const monMat = new THREE.MeshPhongMaterial({
+            color: 0x001a00,
+            emissive: 0x00aa44,
+            emissiveIntensity: 0.8,
+        });
+        const mon = new THREE.Mesh(monGeo, monMat);
+        mon.position.set(0, 1.1, 0);
+        mon.castShadow = true;
+        mon.userData.isMon = true;
+        tGroup.add(mon);
+
+        // Screen glow
+        const tLight = new THREE.PointLight(0x00ff66, 0.6, 6);
+        tLight.position.set(0, 1.1, 0.3);
+        tGroup.add(tLight);
+
+        group.add(tGroup);
+        fd.terminalMesh = tGroup;
+        fd.terminalLight = tLight;
+        fd.monMat = monMat;
+    }
+
+    // Stair Up indicator
+    if (fd.stairUp) {
+        const sw = gridToWorld(fd.stairUp.x, fd.stairUp.z);
+        const sGroup = new THREE.Group();
+        sGroup.position.set(sw.x, 0, sw.z);
+        sGroup.userData = { type: 'stairUp', floor: fi };
+
+        // Arrow marker on floor
+        const arrowGeo = new THREE.BoxGeometry(1.5, 0.05, 1.5);
+        const arrowMat = new THREE.MeshPhongMaterial({
+            color: 0x222200,
+            emissive: fd.stairUpLocked ? 0x660000 : 0x006600,
+            emissiveIntensity: 0.5,
+        });
+        const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+        arrow.position.y = 0.03;
+        sGroup.add(arrow);
+
+        // Door frame
+        const frameMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
+        const frameL = new THREE.Mesh(new THREE.BoxGeometry(0.15, C.WALL_H, 0.15), frameMat);
+        frameL.position.set(-0.9, C.WALL_H / 2, 0);
+        sGroup.add(frameL);
+        const frameR = new THREE.Mesh(new THREE.BoxGeometry(0.15, C.WALL_H, 0.15), frameMat);
+        frameR.position.set(0.9, C.WALL_H / 2, 0);
+        sGroup.add(frameR);
+
+        // Lock indicator light
+        const lockLight = new THREE.PointLight(fd.stairUpLocked ? 0xff0000 : 0x00ff00, 0.5, 4);
+        lockLight.position.set(0, 2.8, 0);
+        sGroup.add(lockLight);
+
+        group.add(sGroup);
+        fd.stairUpMesh = sGroup;
+        fd.stairUpArrowMat = arrowMat;
+        fd.stairUpLockLight = lockLight;
+    }
+
+    // Stair Down indicator
+    if (fd.stairDown) {
+        const sw = gridToWorld(fd.stairDown.x, fd.stairDown.z);
+        const sGroup = new THREE.Group();
+        sGroup.position.set(sw.x, 0, sw.z);
+        sGroup.userData = { type: 'stairDown', floor: fi };
+
+        const arrowGeo = new THREE.BoxGeometry(1.5, 0.05, 1.5);
+        const arrowMat = new THREE.MeshPhongMaterial({
+            color: 0x001122,
+            emissive: 0x004488,
+            emissiveIntensity: 0.5,
+        });
+        const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+        arrow.position.y = 0.03;
+        sGroup.add(arrow);
+
+        const downLight = new THREE.PointLight(0x0066cc, 0.4, 4);
+        downLight.position.set(0, 0.5, 0);
+        sGroup.add(downLight);
+
+        group.add(sGroup);
+        fd.stairDownMesh = sGroup;
+    }
+
+    // Exit door (floor 0 only)
+    if (fi === 0) {
+        const ew = gridToWorld(EXIT_POS.x, EXIT_POS.z);
+        const eGroup = new THREE.Group();
+        eGroup.position.set(ew.x, 0, ew.z);
+        eGroup.userData = { type: 'exit' };
+
+        const doorGeo = new THREE.BoxGeometry(2, C.WALL_H - 0.3, 0.2);
+        const doorMat = new THREE.MeshPhongMaterial({
+            color: 0x333333,
+            emissive: 0x440000,
+            emissiveIntensity: 0.3,
+        });
+        const door = new THREE.Mesh(doorGeo, doorMat);
+        door.position.y = (C.WALL_H - 0.3) / 2;
+        door.castShadow = true;
+        eGroup.add(door);
+
+        // EXIT sign
+        const signGeo = new THREE.BoxGeometry(1.2, 0.3, 0.05);
+        const signMat = new THREE.MeshPhongMaterial({
+            color: 0x220000,
+            emissive: 0xff0000,
+            emissiveIntensity: 0.6,
+        });
+        const sign = new THREE.Mesh(signGeo, signMat);
+        sign.position.set(0, C.WALL_H - 0.3, 0.15);
+        eGroup.add(sign);
+
+        const exitLight = new THREE.PointLight(0xff2200, 0.6, 5);
+        exitLight.position.set(0, C.WALL_H - 0.5, 0.5);
+        eGroup.add(exitLight);
+
+        group.add(eGroup);
+        fd.exitMesh = eGroup;
+        fd.exitDoorMat = doorMat;
+        fd.exitLight = exitLight;
+    }
+
+    // Flickering corridor lights
+    fd.flickerLights = [];
+    for (const lp of fd.lights) {
+        const lw = gridToWorld(lp.x, lp.z);
+        const pl = new THREE.PointLight(0x443322, 0.15, 8);
+        pl.position.set(lw.x, C.WALL_H - 0.3, lw.z);
+        group.add(pl);
+        fd.flickerLights.push({ light: pl, phase: Math.random() * Math.PI * 2, speed: 1 + Math.random() * 3 });
+    }
+
+    // Tables (hiding spots) - tall enough to crouch under
+    const tableMat = new THREE.MeshPhongMaterial({ color: 0x2a2018 });
+    const legGeo = new THREE.BoxGeometry(0.08, 1.05, 0.08);
+    const topGeo = new THREE.BoxGeometry(1.8, 0.06, 1.2);
+    for (const tp of fd.tables) {
+        const tw = gridToWorld(tp.x, tp.z);
+        const tg = new THREE.Group();
+        tg.position.set(tw.x, 0, tw.z);
+        tg.userData = { type: 'table' };
+        const top = new THREE.Mesh(topGeo, tableMat);
+        top.position.y = 1.08;
+        top.castShadow = true;
+        top.receiveShadow = true;
+        tg.add(top);
+        const offsets = [[-0.8, -0.5], [-0.8, 0.5], [0.8, -0.5], [0.8, 0.5]];
+        for (const [ox, oz] of offsets) {
+            const leg = new THREE.Mesh(legGeo, tableMat);
+            leg.position.set(ox, 0.525, oz);
+            tg.add(leg);
+        }
+        group.add(tg);
+    }
+
+    // Vent grates on main floor (entry points to tunnel network)
+    const ventMat = new THREE.MeshPhongMaterial({ color: 0x1a1a22, emissive: 0x002233, emissiveIntensity: 0.3 });
+    const ventGeo = new THREE.BoxGeometry(1.2, 0.08, 1.2);
+    const barGeo = new THREE.BoxGeometry(1.0, 0.04, 0.04);
+    const barMat = new THREE.MeshPhongMaterial({ color: 0x333344 });
+    for (const v of fd.vents) {
+        const vw = gridToWorld(v.x, v.z);
+        const vg = new THREE.Group();
+        vg.position.set(vw.x, 0, vw.z);
+        vg.userData = { type: 'vent', floor: fi };
+        const grate = new THREE.Mesh(ventGeo, ventMat);
+        grate.position.y = 0.04;
+        grate.receiveShadow = true;
+        vg.add(grate);
+        const vLight = new THREE.PointLight(0x0088aa, 0.25, 3);
+        vLight.position.set(0, 0.15, 0);
+        vg.add(vLight);
+        for (let b = -2; b <= 2; b++) {
+            const bar = new THREE.Mesh(barGeo, barMat);
+            bar.position.set(0, 0.09, b * 0.22);
+            vg.add(bar);
+        }
+        group.add(vg);
+    }
+
+    // Build tunnel geometry (separate group, shown when player enters vents)
+    if (fd.tunnelGrid) {
+        const tg = fd.tunnelGrid;
+        const tunnelGroup = new THREE.Group();
+        tunnelGroup.name = `tunnel_${fi}`;
+        const tWallH = 1.2;
+
+        let tWallCount = 0;
+        for (let z = 0; z < C.GRID; z++)
+            for (let x = 0; x < C.GRID; x++)
+                if (tg[z][x] === 1) tWallCount++;
+
+        const tWallGeo = new THREE.BoxGeometry(C.CELL, tWallH, C.CELL);
+        const tWallMat = new THREE.MeshPhongMaterial({ color: 0x151520, specular: 0x222233, shininess: 15 });
+        const tWalls = new THREE.InstancedMesh(tWallGeo, tWallMat, tWallCount);
+        tWalls.castShadow = true;
+        tWalls.receiveShadow = true;
+        const m4 = new THREE.Matrix4();
+        let ti = 0;
+        for (let z = 0; z < C.GRID; z++) {
+            for (let x = 0; x < C.GRID; x++) {
+                if (tg[z][x] === 1) {
+                    m4.makeTranslation(x * C.CELL + C.CELL / 2, tWallH / 2, z * C.CELL + C.CELL / 2);
+                    tWalls.setMatrixAt(ti++, m4);
+                }
+            }
+        }
+        tWalls.instanceMatrix.needsUpdate = true;
+        tunnelGroup.add(tWalls);
+
+        const tFloorSize = C.GRID * C.CELL;
+        const tFloorGeo = new THREE.PlaneGeometry(tFloorSize, tFloorSize);
+        const tFloorMat = new THREE.MeshPhongMaterial({ color: 0x0a0a0e });
+        const tFloor = new THREE.Mesh(tFloorGeo, tFloorMat);
+        tFloor.rotation.x = -Math.PI / 2;
+        tFloor.position.set(tFloorSize / 2, 0, tFloorSize / 2);
+        tFloor.receiveShadow = true;
+        tunnelGroup.add(tFloor);
+
+        const tCeilMat = new THREE.MeshPhongMaterial({ color: 0x060608 });
+        const tCeil = new THREE.Mesh(tFloorGeo.clone(), tCeilMat);
+        tCeil.rotation.x = Math.PI / 2;
+        tCeil.position.set(tFloorSize / 2, tWallH, tFloorSize / 2);
+        tunnelGroup.add(tCeil);
+
+        // Vent exit grates inside tunnel (glowing markers)
+        for (const v of fd.vents) {
+            const vw = gridToWorld(v.x, v.z);
+            const eg = new THREE.Group();
+            eg.position.set(vw.x, 0, vw.z);
+            const eGrate = new THREE.Mesh(
+                new THREE.BoxGeometry(1.4, 0.05, 1.4),
+                new THREE.MeshPhongMaterial({ color: 0x003344, emissive: 0x00aacc, emissiveIntensity: 0.6 })
+            );
+            eGrate.position.y = 0.03;
+            eg.add(eGrate);
+            const eLight = new THREE.PointLight(0x00bbdd, 0.5, 6);
+            eLight.position.set(0, 0.6, 0);
+            eg.add(eLight);
+            tunnelGroup.add(eg);
+        }
+
+        // Dim corridor lights in tunnel
+        for (let z = 2; z < C.GRID - 2; z += 4) {
+            for (let x = 2; x < C.GRID - 2; x += 4) {
+                if (tg[z][x] === 0) {
+                    const tw = gridToWorld(x, z);
+                    const tl = new THREE.PointLight(0x112233, 0.12, 8);
+                    tl.position.set(tw.x, tWallH - 0.2, tw.z);
+                    tunnelGroup.add(tl);
+                }
+            }
+        }
+
+        fd.tunnelGroup = tunnelGroup;
+    }
+
+    return group;
+}
+
+// ═══════════════════════════════════════════════════════════
+// ENTITY
+// ═══════════════════════════════════════════════════════════
+function buildEntity() {
+    entityGroup = new THREE.Group();
+
+    // Body - tall dark figure
+    const bodyGeo = new THREE.BoxGeometry(0.6, 2.4, 0.4);
+    const bodyMat = new THREE.MeshPhongMaterial({ color: 0x050505, specular: 0x000000 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 1.2;
+    body.castShadow = true;
+    entityGroup.add(body);
+
+    // Head
+    const headGeo = new THREE.BoxGeometry(0.45, 0.45, 0.35);
+    const headMat = new THREE.MeshPhongMaterial({ color: 0x080808 });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 2.6;
+    entityGroup.add(head);
+
+    // Eyes
+    const eyeGeo = new THREE.SphereGeometry(0.06, 6, 6);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    entityEyeL = new THREE.Mesh(eyeGeo, eyeMat);
+    entityEyeL.position.set(-0.1, 2.65, 0.18);
+    entityGroup.add(entityEyeL);
+    entityEyeR = new THREE.Mesh(eyeGeo, eyeMat.clone());
+    entityEyeR.position.set(0.1, 2.65, 0.18);
+    entityGroup.add(entityEyeR);
+
+    // Entity glow
+    entityLight = new THREE.PointLight(0xff0000, 0, 8);
+    entityLight.position.set(0, 2.5, 0);
+    entityGroup.add(entityLight);
+}
+
+function getRandomOpenCell(fi) {
+    const grid = floors[fi].grid;
+    const open = [];
+    for (let z = 2; z < C.GRID - 2; z++)
+        for (let x = 2; x < C.GRID - 2; x++)
+            if (grid[z][x] === 0) open.push({ x, z });
+    return open[Math.floor(Math.random() * open.length)];
+}
+
+function updateEntity(dt) {
+    if (!state.active || state.dead || state.won || state.inTerminal) return;
+
+    const fd = floors[state.eFloor];
+    const grid = fd.grid;
+    const pg = worldToGrid(camera.position.x, camera.position.z);
+    const sameFloor = state.eFloor === state.floor;
+
+    // Entity floor change logic
+    state.eFloorTimer += dt;
+    const aggressiveness = 0.3 + (state.keycards.size / C.FLOORS) * 0.5 + (state.hasExitKey ? 0.3 : 0);
+    const floorChangeInterval = Math.max(12, 35 - aggressiveness * 20);
+
+    if (state.eState === 'patrol' && state.eFloorTimer > floorChangeInterval) {
+        state.eFloorTimer = 0;
+        // Prefer player's floor
+        if (state.eFloor !== state.floor && Math.random() < 0.5 + aggressiveness * 0.3) {
+            changeEntityFloor(state.floor);
+        } else {
+            const newFloor = Math.floor(Math.random() * C.FLOORS);
+            if (newFloor !== state.eFloor) changeEntityFloor(newFloor);
+        }
+    }
+
+    // Detection
+    if (sameFloor) {
+        const ew = gridToWorld(state.ePos.x, state.ePos.z);
+        const distToPlayer = dist2D(
+            { x: camera.position.x, z: camera.position.z },
+            { x: ew.x, z: ew.z }
+        );
+
+        if (state.eState === 'patrol') {
+            // Flashlight off = much harder to see, in vent = invisible
+            const lightMult = state.flashlight ? 1.0 : 0.35;
+            const sightRange = state.inVent ? 0 : C.E_SIGHT * C.CELL * lightMult;
+            const canSee = !state.hiding && !state.inVent &&
+                distToPlayer < sightRange &&
+                hasLineOfSight(grid, state.ePos.x, state.ePos.z, pg.x, pg.z);
+            // Sound detection: range scales with noise, flashlight off reduces hearing slightly
+            const hearMult = state.flashlight ? 1.0 : 0.7;
+            const hearRange = C.E_HEAR_RANGE * C.CELL * state.noiseLevel * hearMult;
+            const canHear = !state.hiding && !state.inVent && distToPlayer < hearRange;
+            if (canSee || canHear) {
+                state.eState = 'chase';
+                state.eLostTimer = 0;
+                state.ePath = [];
+                audio.entitySpot();
+                entityLight.intensity = 0.5;
+            }
+        } else if (state.eState === 'chase') {
+            if (!state.inVent && distToPlayer < C.E_KILL * C.CELL) {
+                killPlayer();
+                return;
+            }
+            const cantSeeNow = state.hiding || state.inVent || !hasLineOfSight(grid, state.ePos.x, state.ePos.z, pg.x, pg.z);
+            if (cantSeeNow) {
+                const lostMult = state.hiding ? 3 : (state.inVent ? 4 : (!state.flashlight ? 1.8 : 1));
+                state.eLostTimer += dt * lostMult;
+                if (state.eLostTimer > C.E_MEMORY) {
+                    state.eState = 'patrol';
+                    state.eTarget = null;
+                    state.ePath = [];
+                    entityLight.intensity = 0;
+                }
+            } else {
+                state.eLostTimer = 0;
+            }
+        }
+    } else {
+        if (state.eState === 'chase') {
+            state.eLostTimer += dt;
+            if (state.eLostTimer > C.E_MEMORY * 0.5) {
+                state.eState = 'patrol';
+                state.eTarget = null;
+                state.ePath = [];
+                entityLight.intensity = 0;
+            }
+        }
+    }
+
+    // Movement
+    const speed = state.eState === 'chase'
+        ? C.E_CHASE * (1 + aggressiveness * 0.3)
+        : C.E_PATROL;
+    state.eStepTimer += dt * speed;
+
+    if (state.eStepTimer >= 1.0) {
+        state.eStepTimer = 0;
+
+        if (state.eState === 'chase' && sameFloor) {
+            // Path to player
+            const path = findPath(grid, state.ePos.x, state.ePos.z, pg.x, pg.z);
+            if (path.length > 0) {
+                state.ePos = path[0];
+            }
+        } else {
+            // Patrol: pick random target and move toward it
+            if (!state.eTarget || (state.ePos.x === state.eTarget.x && state.ePos.z === state.eTarget.z)) {
+                state.eTarget = getRandomOpenCell(state.eFloor);
+                state.ePath = findPath(grid, state.ePos.x, state.ePos.z, state.eTarget.x, state.eTarget.z);
+                state.ePathIdx = 0;
+            }
+            if (state.ePath.length > 0 && state.ePathIdx < state.ePath.length) {
+                state.ePos = state.ePath[state.ePathIdx];
+                state.ePathIdx++;
+            } else {
+                state.eTarget = null;
+            }
+        }
+    }
+
+    // Update 3D position
+    if (sameFloor) {
+        if (!entityGroup.parent) scene.add(entityGroup);
+        const ew = gridToWorld(state.ePos.x, state.ePos.z);
+        entityGroup.position.x += (ew.x - entityGroup.position.x) * Math.min(1, dt * 8);
+        entityGroup.position.z += (ew.z - entityGroup.position.z) * Math.min(1, dt * 8);
+
+        // Face player when chasing
+        if (state.eState === 'chase') {
+            const angle = Math.atan2(camera.position.x - entityGroup.position.x, camera.position.z - entityGroup.position.z);
+            entityGroup.rotation.y = angle;
+        } else {
+            // Face movement direction
+            if (state.ePath.length > 0 && state.ePathIdx < state.ePath.length) {
+                const next = gridToWorld(state.ePath[Math.min(state.ePathIdx, state.ePath.length - 1)].x,
+                    state.ePath[Math.min(state.ePathIdx, state.ePath.length - 1)].z);
+                const angle = Math.atan2(next.x - entityGroup.position.x, next.z - entityGroup.position.z);
+                entityGroup.rotation.y += (angle - entityGroup.rotation.y) * Math.min(1, dt * 4);
+            }
+        }
+
+        // Eye flicker
+        const flickerIntensity = state.eState === 'chase' ? 0.7 + Math.random() * 0.3 : 0.3 + Math.random() * 0.2;
+        entityEyeL.material.emissiveIntensity = flickerIntensity;
+        entityEyeR.material.emissiveIntensity = flickerIntensity;
+
+        // Danger effects
+        const ew2 = gridToWorld(state.ePos.x, state.ePos.z);
+        const d = dist2D({ x: camera.position.x, z: camera.position.z }, { x: ew2.x, z: ew2.z });
+        const danger = Math.max(0, 1 - d / (C.E_SIGHT * C.CELL * 0.7));
+        document.getElementById('danger-overlay').style.opacity = danger * 0.6;
+        document.getElementById('danger-overlay').style.background =
+            `radial-gradient(ellipse at center, transparent ${40 - danger * 20}%, rgba(80,0,0,${danger * 0.4}) 100%)`;
+
+        // Heartbeat when close
+        if (d < 15 * C.CELL && !state.dead) {
+            const heartInterval = Math.max(0.3, 1.5 - danger * 1.2);
+            if (!state._heartTimer) state._heartTimer = 0;
+            state._heartTimer += dt;
+            if (state._heartTimer > heartInterval) {
+                state._heartTimer = 0;
+                audio.heartbeat();
+            }
+        }
+    } else {
+        if (entityGroup.parent) scene.remove(entityGroup);
+        document.getElementById('danger-overlay').style.opacity = 0;
+    }
+}
+
+function changeEntityFloor(newFloor) {
+    state.eFloor = Math.max(0, Math.min(C.FLOORS - 1, newFloor));
+    state.ePos = getRandomOpenCell(state.eFloor);
+    state.eTarget = null;
+    state.ePath = [];
+    state.ePathIdx = 0;
+    state.eState = 'patrol';
+    entityLight.intensity = 0;
+}
+
+function killPlayer() {
+    state.dead = true;
+    state.active = false;
+    state.inVent = false;
+    document.getElementById('vent-overlay').style.display = 'none';
+    audio.jumpscare();
+    audio.stopChaseMusic();
+    document.getElementById('game-over').style.display = 'flex';
+    document.exitPointerLock();
+}
+
+// ═══════════════════════════════════════════════════════════
+// PLAYER CONTROLS
+// ═══════════════════════════════════════════════════════════
+function checkCollision(wx, wz) {
+    const grid = state.chaseMode ? state.chaseGrid : (state.inVent ? floors[state.floor].tunnelGrid : floors[state.floor].grid);
+    if (!grid) return false;
+    for (let dz = -1; dz <= 1; dz++) {
+        for (let dx = -1; dx <= 1; dx++) {
+            const gx = Math.floor(wx / C.CELL) + dx;
+            const gz = Math.floor(wz / C.CELL) + dz;
+            if (gx < 0 || gx >= C.GRID || gz < 0 || gz >= C.GRID) continue;
+            if (grid[gz][gx] === 1) {
+                const wx1 = gx * C.CELL, wx2 = (gx + 1) * C.CELL;
+                const wz1 = gz * C.CELL, wz2 = (gz + 1) * C.CELL;
+                const cx = Math.max(wx1, Math.min(wx, wx2));
+                const cz = Math.max(wz1, Math.min(wz, wz2));
+                if (Math.sqrt((wx - cx) ** 2 + (wz - cz) ** 2) < C.P_RAD) return true;
+            }
+        }
+    }
+    return false;
+}
+
+function updatePlayer(dt) {
+    if (!state.active || state.dead || state.won || state.inTerminal) return;
+
+    // Crouch (forced in vent tunnels)
+    state.crouching = state.inVent || !!(keys['KeyC']);
+    const eyeTarget = state.inVent ? VENT_TUNNEL_H : (state.crouching ? C.CROUCH_H : C.EYE_H);
+
+    // Hiding detection: check if crouching near a table or vent (not during chase)
+    state.hiding = false;
+    if (state.crouching && !state.chaseMode) {
+        const px = camera.position.x, pz = camera.position.z;
+        const fd = floors[state.floor];
+        for (const tp of fd.tables) {
+            const tw = gridToWorld(tp.x, tp.z);
+            if (dist2D({ x: px, z: pz }, tw) < 2.0) { state.hiding = true; break; }
+        }
+        if (!state.hiding) {
+            for (const v of fd.vents) {
+                const vw = gridToWorld(v.x, v.z);
+                if (dist2D({ x: px, z: pz }, vw) < 2.0) { state.hiding = true; break; }
+            }
+        }
+    }
+
+    // Sprint/stamina (can't sprint while crouching)
+    const wantSprint = (keys['ShiftLeft'] || keys['ShiftRight']) && !state.crouching;
+    const moving = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'];
+    state.sprinting = wantSprint && moving && state.stamina > 0;
+    if (state.sprinting) {
+        state.stamina = Math.max(0, state.stamina - C.STAM_DRAIN * dt);
+    } else {
+        state.stamina = Math.min(C.STAMINA, state.stamina + C.STAM_REGEN * dt);
+    }
+    document.getElementById('stamina-fill').style.width = (state.stamina / C.STAMINA * 100) + '%';
+    document.getElementById('stamina-fill').style.background = state.stamina < 20 ? '#a00' : '#0a0';
+
+    const speed = C.SPEED * (state.crouching ? C.CROUCH_SPEED : (state.sprinting ? C.SPRINT : 1)) * dt;
+    const sin = Math.sin(state.yaw);
+    const cos = Math.cos(state.yaw);
+
+    let mx = 0, mz = 0;
+    if (keys['KeyW']) { mx -= sin; mz -= cos; }
+    if (keys['KeyS']) { mx += sin; mz += cos; }
+    if (keys['KeyA']) { mx -= cos; mz += sin; }
+    if (keys['KeyD']) { mx += cos; mz -= sin; }
+
+    if (mx !== 0 || mz !== 0) {
+        const len = Math.sqrt(mx * mx + mz * mz);
+        mx = mx / len * speed;
+        mz = mz / len * speed;
+
+        const nx = camera.position.x + mx;
+        const nz = camera.position.z + mz;
+
+        // Slide collision
+        if (!checkCollision(nx, camera.position.z)) camera.position.x = nx;
+        else if (!checkCollision(camera.position.x + mx * 0.1, camera.position.z)) camera.position.x += mx * 0.1;
+
+        if (!checkCollision(camera.position.x, nz)) camera.position.z = nz;
+        else if (!checkCollision(camera.position.x, camera.position.z + mz * 0.1)) camera.position.z += mz * 0.1;
+
+        // Footsteps
+        state.footTimer += dt * (state.sprinting ? 2 : 1);
+        if (state.footTimer > 0.4) {
+            state.footTimer = 0;
+            audio.footstep();
+        }
+
+        // Head bob
+        const bobSpeed = state.crouching ? 6 : (state.sprinting ? 12 : 8);
+        const bobAmt = state.crouching ? 0.015 : (state.sprinting ? 0.06 : 0.03);
+        const targetY = eyeTarget + Math.sin(clock.elapsedTime * bobSpeed) * bobAmt;
+        camera.position.y += (targetY - camera.position.y) * dt * 10;
+    } else {
+        camera.position.y += (eyeTarget - camera.position.y) * dt * 10;
+    }
+
+    // Noise level calculation
+    if (moving) {
+        if (state.sprinting) state.noiseLevel = C.NOISE_SPRINT;
+        else if (state.crouching) state.noiseLevel = C.NOISE_CROUCH_MOVE;
+        else state.noiseLevel = C.NOISE_WALK;
+    } else {
+        state.noiseLevel = state.crouching ? C.NOISE_CROUCH_STILL : C.NOISE_STILL;
+    }
+    if (state.hiding) state.noiseLevel *= 0.3;
+    if (state.inVent) state.noiseLevel = Math.min(state.noiseLevel, 0.05);
+
+    // Update camera rotation
+    camera.rotation.y = state.yaw;
+    camera.rotation.x = state.pitch;
+
+    // Flashlight follows camera
+    flashlight.position.copy(camera.position);
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    flashTarget.position.copy(camera.position).add(fwd.multiplyScalar(5));
+    flashlight.intensity = state.flashlight ? 3.5 : 0;
+}
+
+// ═══════════════════════════════════════════════════════════
+// MINIMAP SYSTEM
+// ═══════════════════════════════════════════════════════════
+function initExplored() {
+    state.explored = [];
+    for (let f = 0; f < C.FLOORS; f++) {
+        const ex = [];
+        for (let z = 0; z < C.GRID; z++) {
+            ex[z] = [];
+            for (let x = 0; x < C.GRID; x++) ex[z][x] = false;
+        }
+        state.explored.push(ex);
+    }
+}
+
+function updateExplored() {
+    if (state.chaseMode) return;
+    const pg = worldToGrid(camera.position.x, camera.position.z);
+    const ex = state.explored[state.floor];
+    const r = state.flashlight ? C.MINIMAP_REVEAL + 2 : C.MINIMAP_REVEAL;
+    for (let dz = -r; dz <= r; dz++) {
+        for (let dx = -r; dx <= r; dx++) {
+            if (dx * dx + dz * dz > r * r) continue;
+            const gx = pg.x + dx, gz = pg.z + dz;
+            if (gx >= 0 && gx < C.GRID && gz >= 0 && gz < C.GRID) {
+                ex[gz][gx] = true;
+            }
+        }
+    }
+}
+
+function renderMinimap() {
+    const canvas = document.getElementById('minimap');
+    const ctx = canvas.getContext('2d');
+    const cs = C.MINIMAP_CELL;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (state.chaseMode) {
+        // During chase, show chase grid fully revealed
+        if (state.chaseGrid) {
+            const cg = state.chaseGrid;
+            for (let z = 0; z < cg.length; z++) {
+                for (let x = 0; x < cg[0].length; x++) {
+                    ctx.fillStyle = cg[z][x] === 1 ? '#1a1a1e' : '#0a0a0e';
+                    ctx.fillRect(x * cs, z * cs, cs, cs);
+                }
+            }
+        }
+    } else if (state.inVent && floors[state.floor].tunnelGrid) {
+        // Show full tunnel grid when inside vents
+        const tg = floors[state.floor].tunnelGrid;
+        for (let z = 0; z < C.GRID; z++) {
+            for (let x = 0; x < C.GRID; x++) {
+                ctx.fillStyle = tg[z][x] === 1 ? '#0a0a12' : '#0e1218';
+                ctx.fillRect(x * cs, z * cs, cs, cs);
+            }
+        }
+    } else {
+        const fd = floors[state.floor];
+        const ex = state.explored[state.floor];
+        for (let z = 0; z < C.GRID; z++) {
+            for (let x = 0; x < C.GRID; x++) {
+                if (!ex[z][x]) {
+                    ctx.fillStyle = '#050505';
+                } else {
+                    ctx.fillStyle = fd.grid[z][x] === 1 ? '#1a1a1e' : '#0e0e12';
+                }
+                ctx.fillRect(x * cs, z * cs, cs, cs);
+            }
+        }
+
+        // Draw points of interest (only if explored)
+        // Terminals
+        if (fd.terminal && ex[fd.terminal.z][fd.terminal.x]) {
+            ctx.fillStyle = fd.terminalAccessed ? '#003300' : '#00aa44';
+            ctx.fillRect(fd.terminal.x * cs + 1, fd.terminal.z * cs + 1, cs - 2, cs - 2);
+        }
+        // Stairs
+        if (fd.stairUp && ex[fd.stairUp.z][fd.stairUp.x]) {
+            ctx.fillStyle = fd.stairUpLocked ? '#aa2200' : '#00aa00';
+            ctx.fillRect(fd.stairUp.x * cs + 1, fd.stairUp.z * cs + 1, cs - 2, cs - 2);
+        }
+        if (fd.stairDown && ex[fd.stairDown.z][fd.stairDown.x]) {
+            ctx.fillStyle = '#0066cc';
+            ctx.fillRect(fd.stairDown.x * cs + 1, fd.stairDown.z * cs + 1, cs - 2, cs - 2);
+        }
+        // Vents
+        for (const v of fd.vents) {
+            if (ex[v.z][v.x]) {
+                ctx.fillStyle = '#cc6600';
+                ctx.fillRect(v.x * cs + 2, v.z * cs + 2, cs - 4, cs - 4);
+            }
+        }
+        // Tunnel corridors (show when explored)
+        if (state.inVent && fd.tunnelGrid) {
+            ctx.fillStyle = 'rgba(0,170,170,0.25)';
+            for (let tz = 0; tz < C.GRID; tz++) {
+                for (let tx = 0; tx < C.GRID; tx++) {
+                    if (fd.tunnelGrid[tz][tx] === 0 && ex[tz][tx]) {
+                        ctx.fillRect(tx * cs, tz * cs, cs, cs);
+                    }
+                }
+            }
+        }
+        // Tables
+        for (const tp of fd.tables) {
+            if (ex[tp.z][tp.x]) {
+                ctx.fillStyle = '#2a2018';
+                ctx.fillRect(tp.x * cs + 2, tp.z * cs + 2, cs - 4, cs - 4);
+            }
+        }
+    }
+
+    // Player position
+    const pg = worldToGrid(camera.position.x, camera.position.z);
+    ctx.fillStyle = '#00ff44';
+    ctx.beginPath();
+    ctx.arc(pg.x * cs + cs / 2, pg.z * cs + cs / 2, cs / 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Entity (always shown on minimap when on same floor — motion sensor)
+    if (state.eFloor === state.floor && !state.chaseMode) {
+        const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.008);
+        const r = cs * 0.6 + cs * 0.3 * pulse;
+        ctx.fillStyle = `rgba(255, 0, 0, ${0.6 + 0.4 * pulse})`;
+        ctx.beginPath();
+        ctx.arc(state.ePos.x * cs + cs / 2, state.ePos.z * cs + cs / 2, r, 0, Math.PI * 2);
+        ctx.fill();
+        // Outer glow ring
+        ctx.strokeStyle = `rgba(255, 50, 50, ${0.3 * pulse})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(state.ePos.x * cs + cs / 2, state.ePos.z * cs + cs / 2, r + 2, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// CHASE SEQUENCE
+// ═══════════════════════════════════════════════════════════
+let chaseGroup = null;
+let chaseEntityGroup = null;
+let chaseEntityPathIdx = 0;
+let chaseExitPos = null;
+let chasePath = [];
+
+function generateChaseGrid() {
+    const s = C.GRID;
+    const g = [];
+    for (let z = 0; z < s; z++) {
+        g[z] = [];
+        for (let x = 0; x < s; x++) g[z][x] = 1;
+    }
+    // Wide zigzag corridors (3 cells wide)
+    const corridors = [
+        { row: 1, cols: [1, s - 2] },
+        { row: 5, cols: [1, s - 2] },
+        { row: 9, cols: [1, s - 2] },
+        { row: 13, cols: [1, s - 2] },
+        { row: 17, cols: [1, s - 2] },
+    ];
+    for (let i = 0; i < corridors.length; i++) {
+        const r = corridors[i].row;
+        for (let dz = 0; dz < 3; dz++) {
+            for (let x = corridors[i].cols[0]; x <= corridors[i].cols[1]; x++) {
+                if (r + dz < s) g[r + dz][x] = 0;
+            }
+        }
+        if (i < corridors.length - 1) {
+            const connX = (i % 2 === 0) ? s - 4 : 1;
+            const nextRow = corridors[i + 1].row;
+            for (let z = r + 2; z <= nextRow + 1; z++) {
+                for (let dx = 0; dx < 3; dx++) {
+                    if (connX + dx < s && z < s) g[z][connX + dx] = 0;
+                }
+            }
+        }
+    }
+    return g;
+}
+
+function buildChaseLevel() {
+    const grid = generateChaseGrid();
+    state.chaseGrid = grid;
+    const group = new THREE.Group();
+
+    const wallGeo = new THREE.BoxGeometry(C.CELL, C.WALL_H, C.CELL);
+    const wallMat = new THREE.MeshPhongMaterial({ color: 0x220808, specular: 0x110000, shininess: 5 });
+    let wallCount = 0;
+    for (let z = 0; z < C.GRID; z++)
+        for (let x = 0; x < C.GRID; x++)
+            if (grid[z][x] === 1) wallCount++;
+    const walls = new THREE.InstancedMesh(wallGeo, wallMat, wallCount);
+    walls.castShadow = true;
+    walls.receiveShadow = true;
+    const mat4 = new THREE.Matrix4();
+    let idx = 0;
+    for (let z = 0; z < C.GRID; z++) {
+        for (let x = 0; x < C.GRID; x++) {
+            if (grid[z][x] === 1) {
+                mat4.makeTranslation(x * C.CELL + C.CELL / 2, C.WALL_H / 2, z * C.CELL + C.CELL / 2);
+                walls.setMatrixAt(idx++, mat4);
+            }
+        }
+    }
+    walls.instanceMatrix.needsUpdate = true;
+    group.add(walls);
+
+    const floorSize = C.GRID * C.CELL;
+    const floorGeo = new THREE.PlaneGeometry(floorSize, floorSize);
+    const floorMat = new THREE.MeshPhongMaterial({ color: 0x120808, specular: 0x111111, shininess: 3 });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.position.set(floorSize / 2, 0, floorSize / 2);
+    floorMesh.receiveShadow = true;
+    group.add(floorMesh);
+
+    const ceilMat = new THREE.MeshPhongMaterial({ color: 0x0a0404 });
+    const ceil = new THREE.Mesh(floorGeo.clone(), ceilMat);
+    ceil.rotation.x = Math.PI / 2;
+    ceil.position.set(floorSize / 2, C.WALL_H, floorSize / 2);
+    group.add(ceil);
+
+    // Red emergency lights along corridors
+    const corridorRows = [2, 6, 10, 14, 18];
+    for (const row of corridorRows) {
+        for (let x = 3; x < C.GRID - 3; x += 5) {
+            if (grid[row] && grid[row][x] === 0) {
+                const lw = gridToWorld(x, row);
+                const pl = new THREE.PointLight(0xff2200, 0.4, 10);
+                pl.position.set(lw.x, C.WALL_H - 0.3, lw.z);
+                group.add(pl);
+            }
+        }
+    }
+
+    // Exit marker at end of last corridor
+    chaseExitPos = gridToWorld(C.GRID - 3, 18);
+    const exitGroup = new THREE.Group();
+    exitGroup.position.set(chaseExitPos.x, 0, chaseExitPos.z);
+    const doorGeo = new THREE.BoxGeometry(2, C.WALL_H - 0.3, 0.2);
+    const doorMat = new THREE.MeshPhongMaterial({ color: 0x333333, emissive: 0x004400, emissiveIntensity: 0.5 });
+    const door = new THREE.Mesh(doorGeo, doorMat);
+    door.position.y = (C.WALL_H - 0.3) / 2;
+    exitGroup.add(door);
+    const exitLight = new THREE.PointLight(0x00ff44, 0.8, 8);
+    exitLight.position.set(0, 2, 0.5);
+    exitGroup.add(exitLight);
+    const signGeo = new THREE.BoxGeometry(1.2, 0.3, 0.05);
+    const signMat = new THREE.MeshPhongMaterial({ color: 0x002200, emissive: 0x00ff00, emissiveIntensity: 0.8 });
+    const sign = new THREE.Mesh(signGeo, signMat);
+    sign.position.set(0, C.WALL_H - 0.3, 0.15);
+    exitGroup.add(sign);
+    exitGroup.userData = { type: 'chaseExit' };
+    group.add(exitGroup);
+
+    // No hiding spots during chase - pure sprint
+
+    // Build entity path through the chase level
+    chasePath = [];
+    // Follow zigzag: right across row 2, down right side, left across row 6, down left side, etc.
+    for (let x = 1; x <= C.GRID - 2; x++) chasePath.push({ x, z: 2 });
+    for (let z = 3; z <= 6; z++) chasePath.push({ x: C.GRID - 4, z });
+    for (let x = C.GRID - 2; x >= 1; x--) chasePath.push({ x, z: 6 });
+    for (let z = 7; z <= 10; z++) chasePath.push({ x: 1, z });
+    for (let x = 1; x <= C.GRID - 2; x++) chasePath.push({ x, z: 10 });
+    for (let z = 11; z <= 14; z++) chasePath.push({ x: C.GRID - 4, z });
+    for (let x = C.GRID - 2; x >= 1; x--) chasePath.push({ x, z: 14 });
+    for (let z = 15; z <= 18; z++) chasePath.push({ x: 1, z });
+    for (let x = 1; x <= C.GRID - 2; x++) chasePath.push({ x, z: 18 });
+
+    // Stair checkpoints at each floor transition
+    state.chaseCheckpoints = [
+        { z: 4, floor: 4 },
+        { z: 8, floor: 3 },
+        { z: 12, floor: 2 },
+        { z: 16, floor: 1 },
+    ];
+
+    return group;
+}
+
+function startChaseSequence() {
+    state.chaseMode = true;
+    state.chasePhase = 'intro';
+    state.chaseTimer = 0;
+    state.chaseFloorCount = 5;
+
+    // Remove current floor
+    if (floorGroups[state.floor] && floorGroups[state.floor].parent) {
+        scene.remove(floorGroups[state.floor]);
+    }
+    if (entityGroup.parent) scene.remove(entityGroup);
+
+    // Show cutscene
+    const overlay = document.getElementById('cutscene-overlay');
+    const text = document.getElementById('cutscene-text');
+    const sub = document.getElementById('cutscene-sub');
+    overlay.style.display = 'flex';
+    text.textContent = 'CONTAINMENT BREACH';
+    sub.textContent = '';
+    audio.alarm();
+    audio.chaseStinger();
+    // Start chase music after alarm intro
+    setTimeout(() => audio.startChaseMusic(), 2500);
+
+    document.getElementById('floor-ind').textContent = 'FLOOR 5';
+    document.getElementById('danger-overlay').style.opacity = 0.4;
+    document.getElementById('danger-overlay').style.background =
+        'radial-gradient(ellipse at center, transparent 30%, rgba(80,0,0,0.5) 100%)';
+
+    setTimeout(() => {
+        text.textContent = 'RUN';
+        sub.textContent = 'REACH THE EXIT';
+    }, 2000);
+
+    setTimeout(() => {
+        overlay.style.display = 'none';
+        state.chasePhase = 'chase';
+
+        // Build and show chase level
+        chaseGroup = buildChaseLevel();
+        scene.add(chaseGroup);
+
+        // Position player at start
+        const startPos = gridToWorld(2, 2);
+        camera.position.set(startPos.x, C.EYE_H, startPos.z);
+        state.yaw = -Math.PI / 2;
+
+        // Entity starts behind after delay
+        chaseEntityPathIdx = 0;
+        setTimeout(() => {
+            scene.add(entityGroup);
+            const ep = gridToWorld(chasePath[0].x, chasePath[0].z);
+            entityGroup.position.set(ep.x, 0, ep.z);
+            entityLight.intensity = 0.6;
+        }, 2000);
+    }, 3500);
+}
+
+function updateChase(dt) {
+    if (state.chasePhase !== 'chase') return;
+
+    state.chaseTimer += dt;
+
+    // Update entity along chase path
+    if (entityGroup.parent && chasePath.length > 0) {
+        const diff = DIFFICULTY[state.difficulty] || DIFFICULTY.normal;
+        const chaseSpeed = diff.CHASE_ENTITY_BASE_SPEED + state.chaseTimer * diff.CHASE_ENTITY_ACCEL;
+        chaseEntityPathIdx += dt * chaseSpeed;
+        const pathIdx = Math.min(Math.floor(chaseEntityPathIdx), chasePath.length - 1);
+        const tp = gridToWorld(chasePath[pathIdx].x, chasePath[pathIdx].z);
+        entityGroup.position.x += (tp.x - entityGroup.position.x) * Math.min(1, dt * 10);
+        entityGroup.position.z += (tp.z - entityGroup.position.z) * Math.min(1, dt * 10);
+
+        // Face movement direction
+        if (pathIdx < chasePath.length - 1) {
+            const next = gridToWorld(chasePath[pathIdx + 1].x, chasePath[pathIdx + 1].z);
+            const angle = Math.atan2(next.x - entityGroup.position.x, next.z - entityGroup.position.z);
+            entityGroup.rotation.y = angle;
+        }
+
+        // Kill if too close - no mercy during chase
+        const d = dist2D(
+            { x: camera.position.x, z: camera.position.z },
+            { x: entityGroup.position.x, z: entityGroup.position.z }
+        );
+        if (d < C.E_KILL * C.CELL) {
+            killPlayer();
+            return;
+        }
+    }
+
+    // Floor countdown based on player Z position
+    const pg = worldToGrid(camera.position.x, camera.position.z);
+    for (const cp of state.chaseCheckpoints) {
+        if (pg.z >= cp.z && state.chaseFloorCount > cp.floor) {
+            state.chaseFloorCount = cp.floor;
+            document.getElementById('floor-ind').textContent = `FLOOR ${cp.floor}`;
+            audio.stairSound();
+        }
+    }
+
+    // Check if player reached exit
+    if (chaseExitPos) {
+        const d = dist2D(
+            { x: camera.position.x, z: camera.position.z },
+            chaseExitPos
+        );
+        if (d < C.INTERACT) {
+            document.getElementById('interact-prompt').style.display = 'block';
+            document.getElementById('interact-prompt').textContent = '[E] ESCAPE';
+            document.getElementById('interact-prompt').style.color = '#0f0';
+        } else {
+            if (state.chasePhase === 'chase') {
+                document.getElementById('interact-prompt').style.display = 'none';
+            }
+        }
+    }
+
+    // Danger overlay pulses during chase
+    const pulse = 0.2 + Math.sin(state.chaseTimer * 3) * 0.15;
+    document.getElementById('danger-overlay').style.opacity = pulse;
+}
+
+function triggerEscape() {
+    state.chasePhase = 'escape';
+    state.active = false;
+    document.getElementById('interact-prompt').style.display = 'none';
+    audio.stopChaseMusic();
+
+    if (entityGroup.parent) scene.remove(entityGroup);
+
+    const overlay = document.getElementById('cutscene-overlay');
+    const text = document.getElementById('cutscene-text');
+    const sub = document.getElementById('cutscene-sub');
+    overlay.style.display = 'flex';
+    text.textContent = 'YOU ESCAPED';
+    sub.textContent = '';
+    audio.escapeFanfare();
+
+    document.getElementById('danger-overlay').style.opacity = 0;
+    document.getElementById('floor-ind').textContent = 'OUTSIDE';
+
+    setTimeout(() => {
+        sub.textContent = 'The entity retreats into the darkness...';
+    }, 2000);
+
+    setTimeout(() => {
+        sub.textContent = 'You are free.';
+    }, 4500);
+
+    setTimeout(() => {
+        overlay.style.display = 'none';
+        if (chaseGroup && chaseGroup.parent) scene.remove(chaseGroup);
+        state.won = true;
+        document.getElementById('victory').style.display = 'flex';
+        document.exitPointerLock();
+    }, 6500);
+}
+
+// ═══════════════════════════════════════════════════════════
+// VENT TUNNEL SYSTEM
+// ═══════════════════════════════════════════════════════════
+const VENT_TUNNEL_H = 0.5;
+
+function enterVentTunnel(ventPos) {
+    state.inVent = true;
+    state.crouching = true;
+    audio.ventSound();
+
+    // Immediately break entity chase — player vanished into the vents
+    if (state.eState === 'chase') {
+        state.eState = 'patrol';
+        state.eTarget = null;
+        state.ePath = [];
+        state.eLostTimer = 0;
+        entityLight.intensity = 0;
+    }
+
+    const fd = floors[state.floor];
+    // Hide main floor, show tunnel
+    if (floorGroups[state.floor].parent) scene.remove(floorGroups[state.floor]);
+    if (entityGroup.parent) scene.remove(entityGroup);
+    if (fd.tunnelGroup) scene.add(fd.tunnelGroup);
+
+    // Position at the vent entry point
+    const vw = gridToWorld(ventPos.x, ventPos.z);
+    camera.position.set(vw.x, VENT_TUNNEL_H, vw.z);
+
+    // Atmospheric overlay (subtle bars)
+    document.getElementById('vent-overlay').style.display = 'block';
+    document.getElementById('vent-progress-wrap').style.display = 'block';
+    document.getElementById('vent-progress-bar').style.display = 'none';
+    document.getElementById('vent-progress-label').textContent = 'VENT TUNNEL — find a grate and press E to exit';
+}
+
+function exitVentTunnel(exitVentPos) {
+    state.inVent = false;
+    camera.rotation.z = 0;
+    audio.ventSound();
+
+    const fd = floors[state.floor];
+    // Hide tunnel, show main floor
+    if (fd.tunnelGroup && fd.tunnelGroup.parent) scene.remove(fd.tunnelGroup);
+    scene.add(floorGroups[state.floor]);
+    if (state.eFloor === state.floor) scene.add(entityGroup);
+
+    // Position at exit vent on main floor
+    const vw = gridToWorld(exitVentPos.x, exitVentPos.z);
+    camera.position.set(vw.x, C.CROUCH_H, vw.z);
+
+    document.getElementById('vent-overlay').style.display = 'none';
+}
+
+function getVentExitNearby() {
+    // Check if player is near any vent grate inside the tunnel
+    const fd = floors[state.floor];
+    const px = camera.position.x, pz = camera.position.z;
+    for (const v of fd.vents) {
+        const vw = gridToWorld(v.x, v.z);
+        if (dist2D({ x: px, z: pz }, vw) < C.INTERACT) {
+            return v;
+        }
+    }
+    return null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// INTERACTION
+// ═══════════════════════════════════════════════════════════
+function getNearbyInteractable() {
+    if (state.chaseMode) {
+        if (state.chasePhase === 'chase' && chaseExitPos) {
+            const px = camera.position.x, pz = camera.position.z;
+            if (dist2D({ x: px, z: pz }, chaseExitPos) < C.INTERACT) {
+                return { type: 'chaseExit' };
+            }
+        }
+        return null;
+    }
+    const fd = floors[state.floor];
+    const px = camera.position.x, pz = camera.position.z;
+
+    // Terminal
+    if (fd.terminal && !fd.terminalAccessed) {
+        const tw = gridToWorld(fd.terminal.x, fd.terminal.z);
+        if (dist2D({ x: px, z: pz }, tw) < C.INTERACT) {
+            return { type: 'terminal', floor: state.floor };
+        }
+    }
+
+    // Stair Up
+    if (fd.stairUp) {
+        const sw = gridToWorld(fd.stairUp.x, fd.stairUp.z);
+        if (dist2D({ x: px, z: pz }, sw) < C.INTERACT) {
+            if (fd.stairUpLocked) return { type: 'lockedStair', floor: state.floor };
+            return { type: 'stairUp', floor: state.floor };
+        }
+    }
+
+    // Stair Down
+    if (fd.stairDown) {
+        const sw = gridToWorld(fd.stairDown.x, fd.stairDown.z);
+        if (dist2D({ x: px, z: pz }, sw) < C.INTERACT) {
+            return { type: 'stairDown', floor: state.floor };
+        }
+    }
+
+    // Vent tunnel entry (need to be crouching, not already in tunnel)
+    if (state.crouching && !state.inVent) {
+        for (const v of fd.vents) {
+            const vw = gridToWorld(v.x, v.z);
+            if (dist2D({ x: px, z: pz }, vw) < C.INTERACT) {
+                return { type: 'vent', ventPos: v, floor: state.floor };
+            }
+        }
+    }
+
+    // Vent tunnel exit (already inside tunnel)
+    if (state.inVent) {
+        const exitVent = getVentExitNearby();
+        if (exitVent) {
+            return { type: 'ventExit', ventPos: exitVent, floor: state.floor };
+        }
+    }
+
+    // Exit
+    if (state.floor === 0) {
+        const ew = gridToWorld(EXIT_POS.x, EXIT_POS.z);
+        if (dist2D({ x: px, z: pz }, ew) < C.INTERACT) {
+            return { type: 'exit' };
+        }
+    }
+
+    // Chase exit
+    if (state.chaseMode && state.chasePhase === 'chase' && chaseExitPos) {
+        if (dist2D({ x: px, z: pz }, chaseExitPos) < C.INTERACT) {
+            return { type: 'chaseExit' };
+        }
+    }
+
+    return null;
+}
+
+function interact() {
+    const target = getNearbyInteractable();
+    if (!target) return;
+
+    switch (target.type) {
+        case 'terminal':
+            accessTerminal(target.floor);
+            break;
+        case 'stairUp':
+            goUpStairs();
+            break;
+        case 'stairDown':
+            goDownStairs();
+            break;
+        case 'lockedStair': {
+            const fd = floors[target.floor];
+            if (state.keycards.has(target.floor)) {
+                fd.stairUpLocked = false;
+                audio.doorUnlock();
+                // Update visuals
+                if (fd.stairUpArrowMat) fd.stairUpArrowMat.emissive.setHex(0x006600);
+                if (fd.stairUpLockLight) fd.stairUpLockLight.color.setHex(0x00ff00);
+            }
+            break;
+        }
+        case 'vent': {
+            enterVentTunnel(target.ventPos);
+            break;
+        }
+        case 'ventExit': {
+            exitVentTunnel(target.ventPos);
+            break;
+        }
+        case 'exit':
+            if (state.hasExitKey) {
+                winGame();
+            }
+            break;
+        case 'chaseExit':
+            triggerEscape();
+            break;
+    }
+}
+
+// Terminal minigame state
+let terminalGame = null;
+
+function accessTerminal(fi) {
+    const fd = floors[fi];
+    if (fd.terminalAccessed) return;
+
+    state.inTerminal = true;
+    const termUI = document.getElementById('terminal-ui');
+    const termText = document.getElementById('terminal-text');
+    termUI.style.display = 'flex';
+
+    const isLastFloor = fi === C.FLOORS - 1;
+    const keycardName = isLastFloor ? 'EXIT KEYCARD' : `LEVEL ${fi + 2} KEYCARD`;
+
+    // Hacking minigame: type sequences to decrypt
+    const pool = 'WASDQEFR';
+    const baseLen = 5 + fi;                // longer sequences on higher floors
+    const rounds = 4 + fi;                 // more rounds on higher floors
+
+    function makeSequence(len) {
+        let s = '';
+        for (let i = 0; i < len; i++) s += pool[Math.floor(Math.random() * pool.length)];
+        return s;
+    }
+
+    const sequences = [];
+    for (let i = 0; i < rounds; i++) {
+        sequences.push(makeSequence(baseLen + i)); // each round gets 1 char longer
+    }
+
+    terminalGame = {
+        fi,
+        sequences,
+        round: 0,
+        inputIdx: 0,
+        errors: 0,
+        totalErrors: 0,
+        done: false,
+        makeSequence,
+    };
+
+    renderTerminalGame(termText, keycardName);
+    audio.terminalBeep();
+}
+
+function renderTerminalGame(termText, keycardName) {
+    const tg = terminalGame;
+    if (!tg) return;
+
+    const totalRounds = tg.sequences.length;
+    const pct = Math.floor((tg.round / totalRounds) * 100);
+    const bar = '█'.repeat(Math.floor(pct / 5)) + '░'.repeat(20 - Math.floor(pct / 5));
+
+    let html = `<span style="color:#060">> SECURE TERMINAL - FLOOR ${tg.fi + 1}</span>\n`;
+    html += `<span style="color:#060">> DECRYPTING: ${keycardName}</span>\n`;
+    html += `> [${bar}] ${pct}%\n\n`;
+
+    if (tg.done) {
+        html += `<span style="color:#0f0">> DECRYPTION COMPLETE</span>\n`;
+        html += `<span style="color:#0f0">> ✓ ${keycardName} ACQUIRED</span>\n`;
+    } else {
+        html += `> BYPASS SEQUENCE ${tg.round + 1}/${totalRounds}\n`;
+        html += `> TYPE: `;
+
+        const seq = tg.sequences[tg.round];
+        for (let i = 0; i < seq.length; i++) {
+            if (i < tg.inputIdx) {
+                html += `<span style="color:#0f0">${seq[i]}</span>`;
+            } else if (i === tg.inputIdx) {
+                html += `<span style="color:#fff;background:#040;padding:0 2px">${seq[i]}</span>`;
+            } else {
+                html += `<span style="color:#0a0">${seq[i]}</span>`;
+            }
+        }
+        html += '\n\n';
+
+        if (tg.errors >= 2) {
+            html += `<span style="color:#f44">> ⚠ WARNING: SEQUENCE SCRAMBLE IN ${3 - tg.errors} ERROR(S)</span>\n`;
+        } else if (tg.errors > 0) {
+            html += `<span style="color:#f00">> ERROR - SEQUENCE RESET (${tg.errors}/3)</span>\n`;
+        } else {
+            html += `<span style="color:#060">> Waiting for input...</span>\n`;
+        }
+        html += `<span style="color:#333">> Total errors: ${tg.totalErrors}</span>\n`;
+    }
+
+    termText.innerHTML = html;
+}
+
+function handleTerminalInput(key) {
+    if (!terminalGame || terminalGame.done) return;
+
+    const tg = terminalGame;
+    const seq = tg.sequences[tg.round];
+    const expected = seq[tg.inputIdx];
+
+    const isLastFloor = tg.fi === C.FLOORS - 1;
+    const keycardName = isLastFloor ? 'EXIT KEYCARD' : `LEVEL ${tg.fi + 2} KEYCARD`;
+    const termText = document.getElementById('terminal-text');
+
+    if (key === expected) {
+        // Correct key
+        tg.inputIdx++;
+        tg.errors = 0;
+        audio.terminalBeep();
+
+        if (tg.inputIdx >= seq.length) {
+            // Round complete
+            tg.round++;
+            tg.inputIdx = 0;
+            audio.tone(600 + tg.round * 80, 0.1, 'sine', 0.06);
+
+            if (tg.round >= tg.sequences.length) {
+                // All rounds done - grant keycard
+                tg.done = true;
+                renderTerminalGame(termText, keycardName);
+                completeTerminal(tg.fi);
+                return;
+            }
+        }
+    } else {
+        // Wrong key - reset current sequence progress
+        tg.inputIdx = 0;
+        tg.errors++;
+        tg.totalErrors++;
+        audio.tone(120, 0.15, 'square', 0.08);
+
+        // After 3 errors on same sequence, scramble it (regenerate)
+        if (tg.errors >= 3) {
+            tg.sequences[tg.round] = tg.makeSequence(tg.sequences[tg.round].length);
+            tg.errors = 0;
+            audio.tone(80, 0.25, 'sawtooth', 0.1);
+        }
+    }
+
+    renderTerminalGame(termText, keycardName);
+}
+
+function completeTerminal(fi) {
+    const fd = floors[fi];
+    const isLastFloor = fi === C.FLOORS - 1;
+
+    setTimeout(() => {
+        fd.terminalAccessed = true;
+        if (isLastFloor) {
+            state.hasExitKey = true;
+        } else {
+            state.keycards.add(fi);
+        }
+        audio.keycardGet();
+
+        if (fd.monMat) fd.monMat.emissiveIntensity = 0.2;
+        if (fd.terminalLight) fd.terminalLight.intensity = 0.15;
+
+        if (isLastFloor && floors[0].exitDoorMat) {
+            floors[0].exitDoorMat.emissive.setHex(0x004400);
+            floors[0].exitLight.color.setHex(0x00ff00);
+        }
+
+        updateHUD();
+        setTimeout(() => {
+            document.getElementById('terminal-ui').style.display = 'none';
+            state.inTerminal = false;
+            terminalGame = null;
+            if (isLastFloor) {
+                setTimeout(() => startChaseSequence(), 500);
+            }
+        }, 800);
+    }, 500);
+}
+
+function goUpStairs() {
+    if (state.floor >= C.FLOORS - 1) return;
+    const fd = floors[state.floor];
+    if (fd.stairUpLocked) return;
+
+    audio.stairSound();
+    changeFloor(state.floor + 1, 'down');
+}
+
+function goDownStairs() {
+    if (state.floor <= 0) return;
+    audio.stairSound();
+    changeFloor(state.floor - 1, 'up');
+}
+
+function changeFloor(newFloor, spawnAt) {
+    scene.remove(floorGroups[state.floor]);
+    state.floor = newFloor;
+    scene.add(floorGroups[state.floor]);
+
+    // Position player at appropriate stairwell
+    const fd = floors[state.floor];
+    let spawnPos;
+    if (spawnAt === 'down') {
+        // Came from below, spawn at stair-down position
+        spawnPos = fd.stairDown ? gridToWorld(fd.stairDown.x, fd.stairDown.z) : gridToWorld(3, 3);
+    } else if (spawnAt === 'up') {
+        // Came from above, spawn at stair-up position
+        spawnPos = fd.stairUp ? gridToWorld(fd.stairUp.x, fd.stairUp.z) : gridToWorld(17, 17);
+    }
+
+    if (spawnPos) {
+        camera.position.x = spawnPos.x;
+        camera.position.z = spawnPos.z;
+    }
+
+    updateHUD();
+}
+
+function winGame() {
+    state.won = true;
+    state.active = false;
+    document.getElementById('victory').style.display = 'flex';
+    document.exitPointerLock();
+}
+
+// ═══════════════════════════════════════════════════════════
+// UI UPDATES
+// ═══════════════════════════════════════════════════════════
+function updateHUD() {
+    let kcText = '';
+    for (let i = 0; i < C.FLOORS - 1; i++) {
+        kcText += state.keycards.has(i) ? `[L${i + 2}] ` : '[--] ';
+    }
+    kcText += state.hasExitKey ? '[EXIT]' : '[----]';
+    document.getElementById('keycard-display').textContent = kcText;
+    document.getElementById('floor-ind').textContent = `FLOOR ${state.floor + 1}`;
+}
+
+function updateInteractPrompt() {
+    const prompt = document.getElementById('interact-prompt');
+    if (state.inTerminal || state.dead || state.won) {
+        prompt.style.display = 'none';
+        return;
+    }
+
+    const target = getNearbyInteractable();
+    if (!target) {
+        prompt.style.display = 'none';
+        return;
+    }
+
+    prompt.style.display = 'block';
+    switch (target.type) {
+        case 'terminal':
+            prompt.textContent = '[E] Access Terminal';
+            break;
+        case 'stairUp':
+            prompt.textContent = '[E] Go Up';
+            break;
+        case 'stairDown':
+            prompt.textContent = '[E] Go Down';
+            break;
+        case 'lockedStair':
+            prompt.textContent = state.keycards.has(target.floor) ? '[E] Unlock Door' : `LOCKED - Need Level ${target.floor + 2} Keycard`;
+            prompt.style.color = state.keycards.has(target.floor) ? '#0f0' : '#f44';
+            break;
+        case 'vent':
+            prompt.textContent = '[E] Enter Vent Tunnel';
+            prompt.style.color = '#0aa';
+            break;
+        case 'ventExit':
+            prompt.textContent = '[E] Exit Vent';
+            prompt.style.color = '#0aa';
+            break;
+        case 'exit':
+            prompt.textContent = state.hasExitKey ? '[E] ESCAPE' : 'LOCKED - Need Exit Keycard';
+            prompt.style.color = state.hasExitKey ? '#0f0' : '#f44';
+            break;
+        case 'chaseExit':
+            prompt.textContent = '[E] ESCAPE';
+            prompt.style.color = '#0f0';
+            break;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// GAME LOOP
+// ═══════════════════════════════════════════════════════════
+function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.1);
+
+    if (state.active && !state.dead && !state.won) {
+        updatePlayer(dt);
+        // Entity/chase still updates while in vent (tension!)
+        if (state.chaseMode) {
+            updateChase(dt);
+        } else {
+            updateEntity(dt);
+        }
+        updateInteractPrompt();
+        updateExplored();
+        renderMinimap();
+
+        // Sound meter UI
+        const noisePct = Math.min(100, state.noiseLevel / C.NOISE_SPRINT * 100);
+        document.getElementById('sound-fill').style.width = noisePct + '%';
+        if (noisePct > 60) document.getElementById('sound-fill').style.background = '#a00';
+        else if (noisePct > 30) document.getElementById('sound-fill').style.background = '#aa0';
+        else document.getElementById('sound-fill').style.background = '#0a0';
+
+        // Crouch + hidden indicators
+        document.getElementById('crouch-ind').style.display = state.crouching ? 'block' : 'none';
+        document.getElementById('hidden-ind').style.display = state.hiding ? 'block' : 'none';
+
+        // Flicker lights
+        const fd = floors[state.floor];
+        const t = clock.elapsedTime;
+        for (const fl of fd.flickerLights) {
+            const v = 0.1 + 0.1 * Math.sin(t * fl.speed + fl.phase) +
+                0.05 * Math.sin(t * fl.speed * 2.7 + fl.phase * 1.3);
+            fl.light.intensity = Math.max(0, v + (Math.random() < 0.02 ? -0.15 : 0));
+        }
+
+        // Terminal screen flicker
+        if (fd.monMat && !fd.terminalAccessed) {
+            fd.monMat.emissiveIntensity = 0.6 + Math.sin(t * 4) * 0.2 + (Math.random() < 0.05 ? 0.3 : 0);
+        }
+
+        // Screen shake when entity is chasing and close
+        if (state.eState === 'chase' && state.eFloor === state.floor) {
+            const ew = gridToWorld(state.ePos.x, state.ePos.z);
+            const d = dist2D({ x: camera.position.x, z: camera.position.z }, ew);
+            if (d < 8 * C.CELL) {
+                const shake = (1 - d / (8 * C.CELL)) * 0.01;
+                camera.rotation.z = (Math.random() - 0.5) * shake;
+            } else {
+                camera.rotation.z *= 0.9;
+            }
+        } else {
+            camera.rotation.z *= 0.9;
+        }
+    }
+
+    renderer.render(scene, camera);
+}
+
+// ═══════════════════════════════════════════════════════════
+// INITIALIZATION
+// ═══════════════════════════════════════════════════════════
+function rebuildAllFloors() {
+    // Remove old floor geometry
+    for (let i = 0; i < floorGroups.length; i++) {
+        if (floorGroups[i] && floorGroups[i].parent) scene.remove(floorGroups[i]);
+    }
+    floors.length = 0;
+    floorGroups.length = 0;
+    for (let i = 0; i < C.FLOORS; i++) {
+        floors[i] = generateFloorData(i);
+        floorGroups[i] = buildFloor(i);
+    }
+    scene.add(floorGroups[0]);
+    state.floor = 0;
+    const sp = gridToWorld(SPAWN_POS.x, SPAWN_POS.z);
+    camera.position.set(sp.x, C.EYE_H, sp.z);
+    state.eFloor = Math.min(2 + Math.floor(Math.random() * 2), C.FLOORS - 1);
+    state.ePos = getRandomOpenCell(state.eFloor);
+    initExplored();
+    updateHUD();
+}
+
+function init() {
+    audio = new Audio();
+    setupScene();
+    buildEntity();
+
+    // Generate all floors
+    for (let i = 0; i < C.FLOORS; i++) {
+        floors[i] = generateFloorData(i);
+        floorGroups[i] = buildFloor(i);
+    }
+
+    // Initialize explored maps
+    initExplored();
+
+    // Start on floor 0
+    scene.add(floorGroups[0]);
+    const sp = gridToWorld(SPAWN_POS.x, SPAWN_POS.z);
+    camera.position.set(sp.x, C.EYE_H, sp.z);
+    state.yaw = 0;
+    state.pitch = 0;
+
+    // Entity starts on floor 2 or 3 randomly
+    state.eFloor = Math.min(2 + Math.floor(Math.random() * 2), C.FLOORS - 1);
+    state.ePos = getRandomOpenCell(state.eFloor);
+
+    updateHUD();
+    animate();
+}
+
+function resetGame() {
+    // Reset state
+    state.floor = 0;
+    state.keycards = new Set();
+    state.hasExitKey = false;
+    state.flashlight = true;
+    state.sprinting = false;
+    state.stamina = C.STAMINA;
+    state.active = false;
+    state.dead = false;
+    state.won = false;
+    state.inTerminal = false;
+    state.crouching = false;
+    state.noiseLevel = 0;
+    state.hiding = false;
+    state.inVent = false;
+    state.chaseMode = false;
+    state.chasePhase = 'none';
+    state.chaseTimer = 0;
+    state.chaseGrid = null;
+    state.chaseCheckpoints = [];
+    state.chaseFloorCount = 5;
+    if (chaseGroup && chaseGroup.parent) scene.remove(chaseGroup);
+    chaseGroup = null;
+    chaseEntityPathIdx = 0;
+    audio.stopChaseMusic();
+    terminalGame = null;
+    state.eFloor = Math.min(2 + Math.floor(Math.random() * 2), C.FLOORS - 1);
+    state.eState = 'patrol';
+    state.eTarget = null;
+    state.ePath = [];
+    state.ePathIdx = 0;
+    state.eLostTimer = 0;
+    state.eFloorTimer = 0;
+    state.yaw = 0;
+    state.pitch = 0;
+    state._heartTimer = 0;
+
+    // Rebuild floors
+    while (scene.children.length > 0) scene.remove(scene.children[0]);
+    scene.add(new THREE.AmbientLight(0x050508, 0.15));
+    scene.add(flashlight);
+    scene.add(flashTarget);
+
+    floors.length = 0;
+    floorGroups.length = 0;
+
+    for (let i = 0; i < C.FLOORS; i++) {
+        floors[i] = generateFloorData(i);
+        floorGroups[i] = buildFloor(i);
+    }
+
+    scene.add(floorGroups[0]);
+    const sp = gridToWorld(SPAWN_POS.x, SPAWN_POS.z);
+    camera.position.set(sp.x, C.EYE_H, sp.z);
+
+    state.ePos = getRandomOpenCell(state.eFloor);
+
+    document.getElementById('game-over').style.display = 'none';
+    document.getElementById('victory').style.display = 'none';
+    document.getElementById('danger-overlay').style.opacity = 0;
+    document.getElementById('terminal-ui').style.display = 'none';
+    document.getElementById('cutscene-overlay').style.display = 'none';
+    document.getElementById('crouch-ind').style.display = 'none';
+    document.getElementById('hidden-ind').style.display = 'none';
+    document.getElementById('vent-overlay').style.display = 'none';
+    document.getElementById('blocker').style.display = 'flex';
+    document.getElementById('difficulty-screen').style.display = 'none';
+
+    initExplored();
+    updateHUD();
+}
+
+// ═══════════════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+    keys[e.code] = true;
+
+    // Route input to terminal minigame when active
+    if (state.inTerminal && terminalGame && !terminalGame.done) {
+        const keyMap = {
+            KeyW: 'W', KeyA: 'A', KeyS: 'S', KeyD: 'D',
+            KeyQ: 'Q', KeyE: 'E', KeyF: 'F', KeyR: 'R',
+        };
+        if (keyMap[e.code]) {
+            handleTerminalInput(keyMap[e.code]);
+            e.preventDefault();
+            return;
+        }
+    }
+
+    if (e.code === 'KeyF' && state.active && !state.inTerminal) {
+        state.flashlight = !state.flashlight;
+    }
+    if (e.code === 'KeyE' && state.active && !state.inTerminal) {
+        if (state.chaseMode && state.chasePhase === 'chase' && chaseExitPos) {
+            const d = dist2D(
+                { x: camera.position.x, z: camera.position.z },
+                chaseExitPos
+            );
+            if (d < C.INTERACT) {
+                triggerEscape();
+                return;
+            }
+        }
+        interact();
+    }
+});
+
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+document.addEventListener('mousemove', e => {
+    if (!document.pointerLockElement || !state.active) return;
+    state.yaw -= e.movementX * C.SENS;
+    state.pitch -= e.movementY * C.SENS;
+    state.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, state.pitch));
+});
+
+document.addEventListener('pointerlockchange', () => {
+    if (!document.pointerLockElement && state.active && !state.dead && !state.won) {
+        // Paused
+    }
+});
+
+// Click to start → show difficulty screen
+document.getElementById('blocker').addEventListener('click', () => {
+    document.getElementById('blocker').style.display = 'none';
+    document.getElementById('difficulty-screen').style.display = 'flex';
+});
+
+// Difficulty selection → start game
+document.querySelectorAll('.diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const diff = btn.getAttribute('data-diff');
+        applyDifficulty(diff);
+        // Rebuild floors with new difficulty settings
+        rebuildAllFloors();
+        document.getElementById('difficulty-screen').style.display = 'none';
+        renderer.domElement.requestPointerLock();
+        state.active = true;
+        audio.ensure();
+        audio.startDrone();
+    });
+});
+
+document.getElementById('game-over').addEventListener('click', () => {
+    resetGame();
+});
+
+document.getElementById('victory').addEventListener('click', () => {
+    resetGame();
+});
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Start
+init();
+</script>
+</body>
+</html>
