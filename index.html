@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>DESCENT</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{overflow:hidden;background:#000;font-family:'Courier New',monospace}
-canvas{display:block}
+canvas{display:block;touch-action:none}
 
 #blocker{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);
   display:flex;align-items:center;justify-content:center;z-index:100;flex-direction:column;cursor:pointer}
@@ -98,6 +99,75 @@ canvas{display:block}
   transition:all 0.2s;min-width:260px;text-align:center}
 .diff-btn:hover{border-color:#0a0;color:#0a0;text-shadow:0 0 10px #0a0;box-shadow:0 0 15px rgba(0,170,0,0.2)}
 .diff-desc{color:#444;font-size:10px;letter-spacing:2px;margin-bottom:12px;font-family:'Courier New',monospace}
+
+/* ── Mobile mode toggle ── */
+#mobile-mode-wrap{margin-top:24px;text-align:center;font-family:'Courier New',monospace;
+  display:flex;align-items:center;justify-content:center;gap:14px}
+#mobile-mode-wrap span{color:#555;font-size:10px;letter-spacing:3px}
+.toggle-switch{position:relative;display:inline-block;width:46px;height:24px;cursor:pointer;
+  vertical-align:middle;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{position:absolute;inset:0;background:#1a1a1a;border:1px solid #333;border-radius:24px;
+  transition:background 0.2s,border-color 0.2s}
+.toggle-track::before{content:'';position:absolute;width:18px;height:18px;left:2px;top:2px;
+  background:#444;border-radius:50%;transition:transform 0.2s,background 0.2s}
+.toggle-switch input:checked ~ .toggle-track{background:rgba(0,25,0,0.9);border-color:#0a0}
+.toggle-switch input:checked ~ .toggle-track::before{transform:translateX(22px);background:#0a0;
+  box-shadow:0 0 8px rgba(0,170,0,0.5)}
+
+/* ── Sliders (difficulty screen) ── */
+.diff-slider{margin-top:20px;text-align:center;font-family:'Courier New',monospace}
+.diff-slider label{color:#444;font-size:10px;letter-spacing:3px;display:block;margin-bottom:10px}
+.diff-slider input[type=range]{-webkit-appearance:none;width:220px;height:4px;background:#222;
+  border:1px solid #333;outline:none;cursor:pointer;display:block;margin:0 auto}
+.diff-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;
+  border-radius:50%;background:#0a0;border:2px solid #060;
+  box-shadow:0 0 8px rgba(0,170,0,0.5);cursor:pointer}
+.diff-slider input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;
+  background:#0a0;border:2px solid #060;cursor:pointer}
+.diff-slider .sv{color:#0a0;font-size:12px;margin-top:8px;text-shadow:0 0 6px #0a0}
+#sens-control{display:none}
+
+/* ── Mobile virtual controls ── */
+#mobile-controls{display:none;touch-action:none}
+#joystick-zone{position:fixed;bottom:28px;left:28px;width:144px;height:144px;z-index:20;
+  touch-action:none;display:none}
+#joystick-base{width:144px;height:144px;border-radius:50%;background:rgba(0,0,0,0.55);
+  border:2px solid rgba(0,170,0,0.35);position:relative}
+#joystick-knob{width:54px;height:54px;border-radius:50%;background:rgba(0,170,0,0.45);
+  border:2px solid rgba(0,170,0,0.8);position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);box-shadow:0 0 12px rgba(0,170,0,0.3);pointer-events:none}
+#action-btns{position:fixed;bottom:28px;right:16px;z-index:20;touch-action:none;
+  display:none;flex-direction:column;gap:10px;align-items:center}
+.mobile-btn{width:70px;height:70px;border-radius:50%;background:rgba(0,0,0,0.65);
+  border:2px solid rgba(0,170,0,0.45);color:#0a0;font-family:'Courier New',monospace;
+  font-size:10px;letter-spacing:1px;cursor:pointer;touch-action:none;
+  display:flex;align-items:center;justify-content:center;user-select:none;
+  -webkit-user-select:none;text-align:center;line-height:1.3;outline:none;
+  -webkit-tap-highlight-color:transparent}
+.mobile-btn.active{background:rgba(0,170,0,0.28);border-color:#0a0;
+  box-shadow:0 0 14px rgba(0,170,0,0.3)}
+#btn-interact{width:80px;height:80px;font-size:12px;font-weight:bold;
+  border-color:rgba(0,210,0,0.6)}
+#mobile-btn-row{display:flex;gap:10px}
+#terminal-keys{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  display:none;flex-direction:column;gap:10px;z-index:22;touch-action:none}
+.term-row{display:flex;gap:10px;justify-content:center}
+.term-key{width:66px;height:66px;border-radius:10px;background:rgba(0,0,0,0.88);
+  border:2px solid rgba(0,170,0,0.6);color:#0a0;font-family:'Courier New',monospace;
+  font-size:22px;cursor:pointer;touch-action:none;user-select:none;
+  -webkit-user-select:none;display:flex;align-items:center;justify-content:center;
+  outline:none;-webkit-tap-highlight-color:transparent}
+.term-key.pressed{background:rgba(0,170,0,0.3)}
+
+/* ── Reposition HUD when mobile mode is active ── */
+body.mobile-mode #mobile-controls{display:block}
+body.mobile-mode #hud{bottom:auto;top:188px;left:15px}
+body.mobile-mode #crouch-ind{bottom:auto;top:250px;left:15px}
+body.mobile-mode #hidden-ind{bottom:auto;top:268px;left:15px}
+body.mobile-mode #stamina-bar{bottom:186px;right:15px;width:96px}
+body.mobile-mode #sound-meter{bottom:212px;right:15px;width:96px}
+body.mobile-mode #sound-label{bottom:219px;right:15px}
 </style>
 </head>
 <body>
@@ -106,11 +176,11 @@ canvas{display:block}
   <div id="title">DESCENT</div>
   <div id="subtitle">A HORROR EXPERIENCE</div>
   <div id="instructions">
-    <span>WASD</span> - Move &nbsp;&nbsp; <span>MOUSE</span> - Look<br>
+    <span id="inst-move">WASD</span> - Move &nbsp;&nbsp; <span id="inst-look">MOUSE</span> - Look<br>
     <span>F</span> - Flashlight &nbsp;&nbsp; <span>E</span> - Interact &nbsp;&nbsp; <span>SHIFT</span> - Sprint &nbsp;&nbsp; <span>C</span> - Crouch<br><br>
     Find terminals. Collect keycards. Escape the building.<br>
     <span style="color:#600">Something else is in here with you.</span><br><br>
-    Click to begin
+    <span id="inst-start">Click to begin</span>
   </div>
 </div>
 
@@ -151,10 +221,54 @@ canvas{display:block}
   <div class="diff-desc">Standard experience &bull; Balanced challenge</div>
   <button class="diff-btn" data-diff="hard">HARD</button>
   <div class="diff-desc">Fewer hiding spots &bull; Faster entity &bull; Relentless pursuit</div>
+  <div id="mouse-sens-control" class="diff-slider">
+    <label>MOUSE SENSITIVITY</label>
+    <input type="range" id="mouse-sens-slider" min="1" max="10" value="5" step="1">
+    <div class="sv" id="mouse-sens-val">5</div>
+  </div>
+  <div id="mobile-mode-wrap">
+    <span>MOBILE MODE</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="mobile-toggle">
+      <span class="toggle-track"></span>
+    </label>
+  </div>
+  <div id="sens-control" class="diff-slider">
+    <label>TOUCH SENSITIVITY</label>
+    <input type="range" id="sens-slider" min="1" max="10" value="5" step="1">
+    <div class="sv" id="sens-val">5</div>
+  </div>
 </div>
 
 <div id="game-over"><h1>YOU DIED</h1><p>Click to retry</p></div>
 <div id="victory"><h1>YOU ESCAPED</h1><p>Click to play again</p></div>
+
+<!-- Mobile virtual controls -->
+<div id="mobile-controls">
+  <div id="joystick-zone"><div id="joystick-base"><div id="joystick-knob"></div></div></div>
+  <div id="action-btns">
+    <button id="btn-interact" class="mobile-btn">INTER-<br>ACT</button>
+    <div id="mobile-btn-row">
+      <button id="btn-sprint" class="mobile-btn">SPRINT</button>
+      <button id="btn-crouch" class="mobile-btn">CROUCH</button>
+    </div>
+    <button id="btn-flash" class="mobile-btn">LIGHT</button>
+  </div>
+  <div id="terminal-keys">
+    <div class="term-row">
+      <button class="term-key" data-key="Q">Q</button>
+      <button class="term-key" data-key="W">W</button>
+      <button class="term-key" data-key="E">E</button>
+      <button class="term-key" data-key="R">R</button>
+    </div>
+    <div class="term-row">
+      <button class="term-key" data-key="A">A</button>
+      <button class="term-key" data-key="S">S</button>
+      <button class="term-key" data-key="D">D</button>
+      <button class="term-key" data-key="F">F</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -172,8 +286,9 @@ const C = {
     EYE_H: 1.7,
     P_RAD: 0.35,
     INTERACT: 3.5,
-    FL_DIST: 45,
-    FL_ANGLE: Math.PI / 5,
+    FL_DIST: 80,
+    FL_ANGLE: Math.PI / 4.2,
+    FL_INT: 6.5,
     E_PATROL: 1.2,
     E_CHASE: 2.2,
     E_SIGHT: 10,
@@ -280,6 +395,18 @@ const state = {
 };
 
 const keys = {};
+const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+let mobileMode = false; // set to true by the difficulty screen toggle
+const touchState = {
+    joystickId: null, lookId: null,
+    joyCenterX: 0, joyCenterY: 0,
+    moveX: 0, moveZ: 0,
+    lastLookX: 0, lastLookY: 0,
+    sprintActive: false, crouchActive: false,
+};
+const JOYSTICK_MAX = 55; // max px displacement of knob
+let touchSens = 1.0;    // multiplier set by touch sensitivity slider
+let mouseSens = 1.0;    // multiplier set by mouse sensitivity slider
 const floors = [];
 const floorGroups = [];
 let scene, camera, renderer, flashlight, flashTarget;
@@ -780,7 +907,7 @@ function setupScene() {
     // Flashlight
     flashTarget = new THREE.Object3D();
     scene.add(flashTarget);
-    flashlight = new THREE.SpotLight(0xfff8ee, 3.5, C.FL_DIST, C.FL_ANGLE, 0.3, 1.2);
+    flashlight = new THREE.SpotLight(0xfff8ee, C.FL_INT, C.FL_DIST, C.FL_ANGLE, 0.3, 1.2);
     flashlight.castShadow = true;
     flashlight.shadow.mapSize.set(512, 512);
     flashlight.shadow.camera.near = 0.5;
@@ -1380,7 +1507,7 @@ function updatePlayer(dt) {
     if (!state.active || state.dead || state.won || state.inTerminal) return;
 
     // Crouch (forced in vent tunnels)
-    state.crouching = state.inVent || !!(keys['KeyC']);
+    state.crouching = state.inVent || !!(keys['KeyC']) || touchState.crouchActive;
     const eyeTarget = state.inVent ? VENT_TUNNEL_H : (state.crouching ? C.CROUCH_H : C.EYE_H);
 
     // Hiding detection: check if crouching near a table or vent (not during chase)
@@ -1401,8 +1528,9 @@ function updatePlayer(dt) {
     }
 
     // Sprint/stamina (can't sprint while crouching)
-    const wantSprint = (keys['ShiftLeft'] || keys['ShiftRight']) && !state.crouching;
-    const moving = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'];
+    const wantSprint = (keys['ShiftLeft'] || keys['ShiftRight'] || touchState.sprintActive) && !state.crouching;
+    const moving = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] ||
+                   touchState.moveX !== 0 || touchState.moveZ !== 0;
     state.sprinting = wantSprint && moving && state.stamina > 0;
     if (state.sprinting) {
         state.stamina = Math.max(0, state.stamina - C.STAM_DRAIN * dt);
@@ -1421,6 +1549,16 @@ function updatePlayer(dt) {
     if (keys['KeyS']) { mx += sin; mz += cos; }
     if (keys['KeyA']) { mx -= cos; mz += sin; }
     if (keys['KeyD']) { mx += cos; mz -= sin; }
+
+    // Touch joystick: moveX/moveZ are -1..1 (right/down positive on screen)
+    // moveZ<0 = joystick pushed up = forward; matches KeyW direction
+    if (touchState.moveX !== 0 || touchState.moveZ !== 0) {
+        const tLen = Math.sqrt(touchState.moveX ** 2 + touchState.moveZ ** 2);
+        const tx = touchState.moveX / tLen;
+        const tz = touchState.moveZ / tLen;
+        mx += tz * sin + tx * cos;
+        mz += tz * cos - tx * sin;
+    }
 
     if (mx !== 0 || mz !== 0) {
         const len = Math.sqrt(mx * mx + mz * mz);
@@ -1472,7 +1610,7 @@ function updatePlayer(dt) {
     flashlight.position.copy(camera.position);
     const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
     flashTarget.position.copy(camera.position).add(fwd.multiplyScalar(5));
-    flashlight.intensity = state.flashlight ? 3.5 : 0;
+    flashlight.intensity = state.flashlight ? C.FL_INT : 0;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1949,7 +2087,9 @@ function enterVentTunnel(ventPos) {
     document.getElementById('vent-overlay').style.display = 'block';
     document.getElementById('vent-progress-wrap').style.display = 'block';
     document.getElementById('vent-progress-bar').style.display = 'none';
-    document.getElementById('vent-progress-label').textContent = 'VENT TUNNEL — find a grate and press E to exit';
+    document.getElementById('vent-progress-label').textContent = mobileMode
+        ? 'VENT TUNNEL — find a grate and tap INTERACT to exit'
+        : 'VENT TUNNEL — find a grate and press E to exit';
 }
 
 function exitVentTunnel(exitVentPos) {
@@ -2115,6 +2255,7 @@ function accessTerminal(fi) {
     const termUI = document.getElementById('terminal-ui');
     const termText = document.getElementById('terminal-text');
     termUI.style.display = 'flex';
+    showMobileTerminalControls();
 
     const isLastFloor = fi === C.FLOORS - 1;
     const keycardName = isLastFloor ? 'EXIT KEYCARD' : `LEVEL ${fi + 2} KEYCARD`;
@@ -2269,6 +2410,7 @@ function completeTerminal(fi) {
             document.getElementById('terminal-ui').style.display = 'none';
             state.inTerminal = false;
             terminalGame = null;
+            showMobileGameControls();
             if (isLastFloor) {
                 setTimeout(() => startChaseSequence(), 500);
             }
@@ -2471,6 +2613,7 @@ function rebuildAllFloors() {
 function init() {
     audio = new Audio();
     setupScene();
+    setupMobileControls();
     buildEntity();
 
     // Generate all floors
@@ -2565,9 +2708,204 @@ function resetGame() {
     document.getElementById('vent-overlay').style.display = 'none';
     document.getElementById('blocker').style.display = 'flex';
     document.getElementById('difficulty-screen').style.display = 'none';
+    // Hide virtual controls until player selects difficulty again
+    if (mobileMode) {
+        document.getElementById('joystick-zone').style.display = 'none';
+        document.getElementById('action-btns').style.display = 'none';
+        document.getElementById('terminal-keys').style.display = 'none';
+        touchState.sprintActive = false; touchState.crouchActive = false;
+        touchState.moveX = 0; touchState.moveZ = 0;
+        document.getElementById('joystick-knob').style.transform = 'translate(-50%,-50%)';
+    }
 
     initExplored();
     updateHUD();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MOBILE CONTROLS
+// ═══════════════════════════════════════════════════════════
+function applyMobileMode(enabled) {
+    mobileMode = enabled;
+    if (enabled) {
+        document.body.classList.add('mobile-mode');
+        document.getElementById('inst-move').textContent = 'LEFT THUMB';
+        document.getElementById('inst-look').textContent = 'RIGHT DRAG';
+        document.getElementById('inst-start').textContent = 'Tap to begin';
+        document.querySelector('#game-over p').textContent = 'Tap to retry';
+        document.querySelector('#victory p').textContent = 'Tap to play again';
+    } else {
+        document.body.classList.remove('mobile-mode');
+        document.getElementById('inst-move').textContent = 'WASD';
+        document.getElementById('inst-look').textContent = 'MOUSE';
+        document.getElementById('inst-start').textContent = 'Click to begin';
+        document.querySelector('#game-over p').textContent = 'Click to retry';
+        document.querySelector('#victory p').textContent = 'Click to play again';
+    }
+}
+
+function showMobileGameControls() {
+    if (!mobileMode) return;
+    document.getElementById('joystick-zone').style.display = 'block';
+    document.getElementById('action-btns').style.display = 'flex';
+    document.getElementById('terminal-keys').style.display = 'none';
+    // Reset joystick state in case it was active during terminal
+    touchState.joystickId = null;
+    touchState.moveX = 0;
+    touchState.moveZ = 0;
+    document.getElementById('joystick-knob').style.transform = 'translate(-50%,-50%)';
+}
+
+function showMobileTerminalControls() {
+    if (!mobileMode) return;
+    document.getElementById('joystick-zone').style.display = 'none';
+    document.getElementById('action-btns').style.display = 'none';
+    document.getElementById('terminal-keys').style.display = 'flex';
+}
+
+function setupMobileControls() {
+    // Pre-select the toggle based on auto-detection
+    const toggle = document.getElementById('mobile-toggle');
+    toggle.checked = isMobile;
+    document.getElementById('sens-control').style.display = isMobile ? 'block' : 'none';
+
+    // Wire toggle → show/hide sensitivity slider
+    toggle.addEventListener('change', () => {
+        document.getElementById('sens-control').style.display = toggle.checked ? 'block' : 'none';
+    });
+
+    const joyZone = document.getElementById('joystick-zone');
+    const knob = document.getElementById('joystick-knob');
+
+    // Joystick: touchstart records center, subsequent moves displace knob
+    joyZone.addEventListener('touchstart', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (touchState.joystickId !== null) return;
+        const t = e.changedTouches[0];
+        touchState.joystickId = t.identifier;
+        const rect = document.getElementById('joystick-base').getBoundingClientRect();
+        touchState.joyCenterX = rect.left + rect.width / 2;
+        touchState.joyCenterY = rect.top + rect.height / 2;
+    }, { passive: false });
+
+    // Global touchmove — updates joystick knob position and look rotation
+    document.addEventListener('touchmove', e => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            if (t.identifier === touchState.joystickId) {
+                const dx = t.clientX - touchState.joyCenterX;
+                const dy = t.clientY - touchState.joyCenterY;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                if (len > 6) {
+                    const clamped = Math.min(len, JOYSTICK_MAX);
+                    touchState.moveX = (dx / len) * (clamped / JOYSTICK_MAX);
+                    touchState.moveZ = (dy / len) * (clamped / JOYSTICK_MAX);
+                    knob.style.transform =
+                        `translate(calc(-50% + ${dx / len * clamped}px), calc(-50% + ${dy / len * clamped}px))`;
+                } else {
+                    touchState.moveX = 0; touchState.moveZ = 0;
+                    knob.style.transform = 'translate(-50%,-50%)';
+                }
+            } else if (t.identifier === touchState.lookId) {
+                if (!state.active || state.inTerminal) continue;
+                const dx = t.clientX - touchState.lastLookX;
+                const dy = t.clientY - touchState.lastLookY;
+                state.yaw   -= dx * C.SENS * touchSens;
+                state.pitch -= dy * C.SENS * touchSens;
+                state.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, state.pitch));
+                touchState.lastLookX = t.clientX;
+                touchState.lastLookY = t.clientY;
+            }
+        }
+    }, { passive: false });
+
+    // Global touchend/cancel — release joystick or look
+    function releaseTouches(e) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            if (t.identifier === touchState.joystickId) {
+                touchState.joystickId = null;
+                touchState.moveX = 0; touchState.moveZ = 0;
+                knob.style.transform = 'translate(-50%,-50%)';
+            } else if (t.identifier === touchState.lookId) {
+                touchState.lookId = null;
+            }
+        }
+    }
+    document.addEventListener('touchend', releaseTouches, { passive: false });
+    document.addEventListener('touchcancel', releaseTouches, { passive: false });
+
+    // Canvas: any touch starts look tracking (only when mobile mode is on)
+    renderer.domElement.addEventListener('touchstart', e => {
+        e.preventDefault();
+        if (!mobileMode) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            if (touchState.lookId === null && state.active && !state.inTerminal) {
+                touchState.lookId = t.identifier;
+                touchState.lastLookX = t.clientX;
+                touchState.lastLookY = t.clientY;
+            }
+        }
+    }, { passive: false });
+
+    // Action buttons
+    document.getElementById('btn-interact').addEventListener('touchstart', e => {
+        e.preventDefault(); e.stopPropagation();
+        if (state.active && !state.inTerminal) interact();
+    }, { passive: false });
+
+    const btnSprint = document.getElementById('btn-sprint');
+    btnSprint.addEventListener('touchstart', e => {
+        e.preventDefault(); e.stopPropagation();
+        touchState.sprintActive = !touchState.sprintActive;
+        btnSprint.classList.toggle('active', touchState.sprintActive);
+    }, { passive: false });
+
+    const btnCrouch = document.getElementById('btn-crouch');
+    btnCrouch.addEventListener('touchstart', e => {
+        e.preventDefault(); e.stopPropagation();
+        touchState.crouchActive = !touchState.crouchActive;
+        btnCrouch.classList.toggle('active', touchState.crouchActive);
+    }, { passive: false });
+
+    document.getElementById('btn-flash').addEventListener('touchstart', e => {
+        e.preventDefault(); e.stopPropagation();
+        if (state.active && !state.inTerminal) state.flashlight = !state.flashlight;
+    }, { passive: false });
+
+    // Terminal key buttons
+    document.querySelectorAll('.term-key').forEach(btn => {
+        btn.addEventListener('touchstart', e => {
+            e.preventDefault(); e.stopPropagation();
+            btn.classList.add('pressed');
+            if (state.inTerminal && terminalGame && !terminalGame.done) {
+                handleTerminalInput(btn.getAttribute('data-key'));
+            }
+        }, { passive: false });
+        btn.addEventListener('touchend', e => {
+            e.preventDefault();
+            btn.classList.remove('pressed');
+        }, { passive: false });
+    });
+
+    // Mouse sensitivity slider (always active)
+    const mouseSlider = document.getElementById('mouse-sens-slider');
+    const mouseSensVal = document.getElementById('mouse-sens-val');
+    mouseSlider.addEventListener('input', () => {
+        mouseSens = mouseSlider.value / 5; // range 1-10 → 0.2x–2.0x
+        mouseSensVal.textContent = mouseSlider.value;
+    });
+
+    // Touch sensitivity slider (only relevant in mobile mode)
+    const slider = document.getElementById('sens-slider');
+    const sensVal = document.getElementById('sens-val');
+    slider.addEventListener('input', () => {
+        touchSens = slider.value / 5; // range 1-10 → 0.2x–2.0x
+        sensVal.textContent = slider.value;
+    });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2611,8 +2949,8 @@ document.addEventListener('keyup', e => { keys[e.code] = false; });
 
 document.addEventListener('mousemove', e => {
     if (!document.pointerLockElement || !state.active) return;
-    state.yaw -= e.movementX * C.SENS;
-    state.pitch -= e.movementY * C.SENS;
+    state.yaw -= e.movementX * C.SENS * mouseSens;
+    state.pitch -= e.movementY * C.SENS * mouseSens;
     state.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, state.pitch));
 });
 
@@ -2634,12 +2972,14 @@ document.querySelectorAll('.diff-btn').forEach(btn => {
         const diff = btn.getAttribute('data-diff');
         applyDifficulty(diff);
         // Rebuild floors with new difficulty settings
+        applyMobileMode(document.getElementById('mobile-toggle').checked);
         rebuildAllFloors();
         document.getElementById('difficulty-screen').style.display = 'none';
-        renderer.domElement.requestPointerLock();
+        if (!mobileMode) renderer.domElement.requestPointerLock();
         state.active = true;
         audio.ensure();
         audio.startDrone();
+        showMobileGameControls();
     });
 });
 
